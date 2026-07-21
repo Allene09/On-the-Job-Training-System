@@ -1,2 +1,1 @@
-# OJT-SYSTEM
-OJT SYSTEM
+On-the-Job-Training-System
