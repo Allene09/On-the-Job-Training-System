@@ -1,0 +1,291 @@
+import { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import {
+  Users, Building2, FileText, BarChart3, Plus, Settings,
+  TrendingUp, Clock, CheckCircle2, XCircle, Bell
+} from 'lucide-react';
+
+function StatusBadge({ status }) {
+  const map = { active: 'badge-active', inactive: 'badge-rejected', pending: 'badge-pending', approved: 'badge-approved', student: 'badge-ongoing', staff: 'badge-submitted', admin: 'badge-approved' };
+  return (
+    <span className={`badge ${map[status] || 'badge-pending'}`}>
+      <span className="badge-dot" />
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </span>
+  );
+}
+
+export default function AdminDashboard({ activePage }) {
+  const { mockData } = useAuth();
+  const [companies, setCompanies] = useState([...mockData.companies]);
+  const [reqTypes, setReqTypes] = useState([...mockData.requirement_types]);
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [showReqModal, setShowReqModal] = useState(false);
+  const [companyForm, setCompanyForm] = useState({ company_name: '', industry: '', address: '', contact_person: '', contact_number: '', email: '', slots_available: 5 });
+  const [reqForm, setReqForm] = useState({ name: '', description: '', is_required: true, deadline: '' });
+
+  const addCompany = () => {
+    if (!companyForm.company_name) return;
+    setCompanies([...companies, { ...companyForm, company_id: companies.length + 1, status: 'active', added_by: 3, created_at: new Date().toISOString(), slots_available: parseInt(companyForm.slots_available) }]);
+    setShowCompanyModal(false);
+    setCompanyForm({ company_name: '', industry: '', address: '', contact_person: '', contact_number: '', email: '', slots_available: 5 });
+  };
+
+  const addRequirement = () => {
+    if (!reqForm.name) return;
+    setReqTypes([...reqTypes, { ...reqForm, requirement_id: reqTypes.length + 1, is_required: Boolean(reqForm.is_required) }]);
+    setShowReqModal(false);
+    setReqForm({ name: '', description: '', is_required: true, deadline: '' });
+  };
+
+  const stats = {
+    total_users: mockData.users.length,
+    total_students: mockData.students.length,
+    total_companies: companies.length,
+    active_companies: companies.filter(c => c.status === 'active').length,
+    ongoing_placements: mockData.ojt_placements.filter(p => p.status === 'ongoing').length,
+    completed_placements: mockData.ojt_placements.filter(p => p.status === 'completed').length,
+    total_hours: mockData.attendance.reduce((s, a) => s + (a.hours_rendered || 0), 0).toFixed(1)
+  };
+
+  const pages = {
+    dashboard: <AdminOverview stats={stats} announcements={mockData.announcements} />,
+    users: <ManageUsersView users={mockData.users} students={mockData.students} staff={mockData.staff} admins={mockData.admins} />,
+    companies: <ManageCompaniesView companies={companies} onAdd={() => setShowCompanyModal(true)} setCompanies={setCompanies} />,
+    requirements: <ManageRequirementsView reqTypes={reqTypes} onAdd={() => setShowReqModal(true)} setReqTypes={setReqTypes} />,
+    reports: <ReportsView stats={stats} placements={mockData.ojt_placements} students={mockData.students} companies={mockData.companies} />
+  };
+
+  return (
+    <>
+      {showCompanyModal && (
+        <div className="modal-overlay" onClick={() => setShowCompanyModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <div className="modal-header"><h2 className="modal-title">Add Partner Company</h2><button className="btn btn-ghost btn-sm" onClick={() => setShowCompanyModal(false)}>✕</button></div>
+            <div className="form-row">
+              <div className="form-group"><label className="form-label">Company Name</label><input className="form-input" value={companyForm.company_name} onChange={e => setCompanyForm({ ...companyForm, company_name: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">Industry</label><input className="form-input" value={companyForm.industry} onChange={e => setCompanyForm({ ...companyForm, industry: e.target.value })} /></div>
+            </div>
+            <div className="form-group"><label className="form-label">Address</label><input className="form-input" value={companyForm.address} onChange={e => setCompanyForm({ ...companyForm, address: e.target.value })} /></div>
+            <div className="form-row">
+              <div className="form-group"><label className="form-label">Contact Person</label><input className="form-input" value={companyForm.contact_person} onChange={e => setCompanyForm({ ...companyForm, contact_person: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">Slots Available</label><input type="number" className="form-input" value={companyForm.slots_available} min="1" onChange={e => setCompanyForm({ ...companyForm, slots_available: e.target.value })} /></div>
+            </div>
+            <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" value={companyForm.email} onChange={e => setCompanyForm({ ...companyForm, email: e.target.value })} /></div>
+            <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={addCompany}><Plus size={16} /> Add Company</button>
+          </div>
+        </div>
+      )}
+
+      {showReqModal && (
+        <div className="modal-overlay" onClick={() => setShowReqModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header"><h2 className="modal-title">Add Requirement Type</h2><button className="btn btn-ghost btn-sm" onClick={() => setShowReqModal(false)}>✕</button></div>
+            <div className="form-group"><label className="form-label">Requirement Name</label><input className="form-input" value={reqForm.name} onChange={e => setReqForm({ ...reqForm, name: e.target.value })} /></div>
+            <div className="form-group"><label className="form-label">Description</label><input className="form-input" value={reqForm.description} onChange={e => setReqForm({ ...reqForm, description: e.target.value })} /></div>
+            <div className="form-row">
+              <div className="form-group"><label className="form-label">Deadline</label><input type="date" className="form-input" value={reqForm.deadline} onChange={e => setReqForm({ ...reqForm, deadline: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">Required?</label>
+                <select className="form-select" value={reqForm.is_required} onChange={e => setReqForm({ ...reqForm, is_required: e.target.value === 'true' })}>
+                  <option value="true">Yes (Required)</option><option value="false">No (Optional)</option>
+                </select>
+              </div>
+            </div>
+            <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={addRequirement}><Plus size={16} /> Add Requirement</button>
+          </div>
+        </div>
+      )}
+
+      <div className="page">{pages[activePage] || pages.dashboard}</div>
+    </>
+  );
+}
+
+function AdminOverview({ stats, announcements }) {
+  return (
+    <>
+      <div className="page-header"><h1>Admin Dashboard</h1><p>System-wide overview and management tools</p></div>
+      <div className="stat-grid">
+        <div className="stat-card cyan"><div className="stat-icon cyan"><Users size={20} /></div><div><div className="stat-value">{stats.total_users}</div><div className="stat-label">Total Users</div></div></div>
+        <div className="stat-card purple"><div className="stat-icon purple"><Building2 size={20} /></div><div><div className="stat-value">{stats.total_companies}</div><div className="stat-label">Partner Companies</div></div></div>
+        <div className="stat-card green"><div className="stat-icon green"><TrendingUp size={20} /></div><div><div className="stat-value">{stats.ongoing_placements}</div><div className="stat-label">Active Placements</div></div></div>
+        <div className="stat-card orange"><div className="stat-icon orange"><Clock size={20} /></div><div><div className="stat-value">{stats.total_hours}h</div><div className="stat-label">Hours Tracked</div></div></div>
+      </div>
+      <div className="grid-2" style={{ gap: '20px' }}>
+        <div className="card">
+          <div className="card-header"><div className="card-title">Quick Stats</div></div>
+          {[
+            ['Students', stats.total_students],
+            ['Active Companies', stats.active_companies],
+            ['Ongoing Placements', stats.ongoing_placements],
+            ['Completed Placements', stats.completed_placements]
+          ].map(([label, val]) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--color-border)' }}>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{label}</span>
+              <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{val}</span>
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <div className="card-header"><div className="card-title">Announcements</div></div>
+          {announcements.map(a => (
+            <div key={a.announcement_id} className="announcement-card">
+              <div className="announcement-title">{a.title}</div>
+              <div className="announcement-content">{a.content}</div>
+              <div className="announcement-date">{new Date(a.created_at).toLocaleDateString()}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ManageUsersView({ users, students, staff, admins }) {
+  const enriched = users.map(u => {
+    let profile = null;
+    if (u.role === 'student') profile = students.find(s => s.user_id === u.user_id);
+    else if (u.role === 'staff') profile = staff.find(s => s.user_id === u.user_id);
+    else if (u.role === 'admin') profile = admins.find(a => a.user_id === u.user_id);
+    return { ...u, full_name: profile?.full_name || u.email };
+  });
+
+  return (
+    <>
+      <div className="page-header"><h1>Manage Users</h1><p>View all registered system users and their roles</p></div>
+      <div className="card">
+        <div className="table-wrapper">
+          <table>
+            <thead><tr><th>#</th><th>Full Name</th><th>Email</th><th>Role</th><th>Status</th><th>Registered</th></tr></thead>
+            <tbody>
+              {enriched.map(u => (
+                <tr key={u.user_id}>
+                  <td style={{ color: 'var(--text-muted)' }}>{u.user_id}</td>
+                  <td style={{ fontWeight: 600 }}>{u.full_name}</td>
+                  <td style={{ color: 'var(--text-accent)', fontSize: '0.82rem' }}>{u.email}</td>
+                  <td><StatusBadge status={u.role} /></td>
+                  <td><StatusBadge status={u.status} /></td>
+                  <td style={{ color: 'var(--text-muted)' }}>{new Date(u.created_at).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ManageCompaniesView({ companies, onAdd, setCompanies }) {
+  const deactivate = (id) => setCompanies(companies.map(c => c.company_id === id ? { ...c, status: c.status === 'active' ? 'inactive' : 'active' } : c));
+  return (
+    <>
+      <div className="page-header">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div><h1>Partner Companies</h1><p>Manage Host Training Establishment (HTE) directory</p></div>
+          <button className="btn btn-primary" onClick={onAdd}><Plus size={16} /> Add Company</button>
+        </div>
+      </div>
+      <div className="card">
+        <div className="table-wrapper">
+          <table>
+            <thead><tr><th>Company</th><th>Industry</th><th>Contact Person</th><th>Email</th><th>Slots</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody>
+              {companies.map(c => (
+                <tr key={c.company_id}>
+                  <td style={{ fontWeight: 600 }}>{c.company_name}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{c.industry}</td>
+                  <td>{c.contact_person}</td>
+                  <td style={{ color: 'var(--text-accent)', fontSize: '0.78rem' }}>{c.email}</td>
+                  <td style={{ color: 'var(--status-approved)', fontWeight: 600 }}>{c.slots_available}</td>
+                  <td><StatusBadge status={c.status} /></td>
+                  <td><button className="btn btn-ghost btn-xs" onClick={() => deactivate(c.company_id)}>{c.status === 'active' ? 'Deactivate' : 'Activate'}</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ManageRequirementsView({ reqTypes, onAdd, setReqTypes }) {
+  const toggle = (id) => setReqTypes(reqTypes.map(r => r.requirement_id === id ? { ...r, is_required: !r.is_required } : r));
+  return (
+    <>
+      <div className="page-header">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div><h1>Requirement Types</h1><p>Configure OJT document submission requirements</p></div>
+          <button className="btn btn-primary" onClick={onAdd}><Plus size={16} /> Add Requirement</button>
+        </div>
+      </div>
+      <div className="card">
+        <div className="table-wrapper">
+          <table>
+            <thead><tr><th>#</th><th>Requirement Name</th><th>Description</th><th>Deadline</th><th>Required</th><th>Action</th></tr></thead>
+            <tbody>
+              {reqTypes.map(r => (
+                <tr key={r.requirement_id}>
+                  <td style={{ color: 'var(--text-muted)' }}>{r.requirement_id}</td>
+                  <td style={{ fontWeight: 600 }}>{r.name}</td>
+                  <td style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{r.description}</td>
+                  <td style={{ color: 'var(--text-secondary)' }}>{r.deadline}</td>
+                  <td><span className={`badge ${r.is_required ? 'badge-approved' : 'badge-pending'}`}><span className="badge-dot" />{r.is_required ? 'Required' : 'Optional'}</span></td>
+                  <td><button className="btn btn-ghost btn-xs" onClick={() => toggle(r.requirement_id)}>Toggle</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ReportsView({ stats, placements, students, companies }) {
+  return (
+    <>
+      <div className="page-header"><h1>System Reports & Analytics</h1><p>View overall OJT performance and completion analytics</p></div>
+      <div className="stat-grid">
+        <div className="stat-card cyan"><div className="stat-icon cyan"><BarChart3 size={20} /></div><div><div className="stat-value">{stats.total_students}</div><div className="stat-label">Total Students</div></div></div>
+        <div className="stat-card green"><div className="stat-icon green"><CheckCircle2 size={20} /></div><div><div className="stat-value">{stats.completed_placements}</div><div className="stat-label">OJT Completed</div></div></div>
+        <div className="stat-card purple"><div className="stat-icon purple"><TrendingUp size={20} /></div><div><div className="stat-value">{stats.ongoing_placements}</div><div className="stat-label">OJT Ongoing</div></div></div>
+        <div className="stat-card orange"><div className="stat-icon orange"><Clock size={20} /></div><div><div className="stat-value">{stats.total_hours}h</div><div className="stat-label">Total Hours Tracked</div></div></div>
+      </div>
+      <div className="card">
+        <div className="card-header"><div className="card-title">Placement Summary</div></div>
+        <div className="table-wrapper">
+          <table>
+            <thead><tr><th>Student</th><th>Course</th><th>Company</th><th>Hours Rendered</th><th>Required</th><th>Progress</th><th>Status</th></tr></thead>
+            <tbody>
+              {placements.map(p => {
+                const s = students.find(st => st.student_id === p.student_id);
+                const c = companies.find(co => co.company_id === p.company_id);
+                const pct = Math.min(Math.round((p.total_hours_rendered / p.required_hours) * 100), 100);
+                return (
+                  <tr key={p.placement_id}>
+                    <td style={{ fontWeight: 600 }}>{s?.full_name || '—'}</td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{s?.course || '—'}</td>
+                    <td>{c?.company_name || '—'}</td>
+                    <td style={{ color: 'var(--text-accent)', fontWeight: 600 }}>{p.total_hours_rendered}h</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{p.required_hours}h</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ flex: 1, height: '6px', background: 'var(--color-bg-elevated)', borderRadius: '999px', overflow: 'hidden', minWidth: '80px' }}>
+                          <div style={{ height: '100%', background: 'var(--gradient-primary)', borderRadius: '999px', width: `${pct}%` }} />
+                        </div>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)', width: '36px' }}>{pct}%</span>
+                      </div>
+                    </td>
+                    <td><StatusBadge status={p.status} /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
