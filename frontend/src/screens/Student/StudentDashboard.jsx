@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, FileText, Building2, Clock, BookOpen,
   TrendingUp, Bell, Star, CheckCircle2, XCircle, AlertCircle,
-  Plus, Send, ChevronRight, Award
+  Plus, Send, ChevronRight, Award, Search, MapPin, Briefcase, Users
 } from 'lucide-react';
 
 function StatusBadge({ status }) {
@@ -366,6 +366,14 @@ function RequirementsView({ reqChecklist, onSubmit }) {
 }
 
 function CompaniesView({ companies, applications, onApply, student }) {
+  const [search, setSearch] = useState('');
+
+  const filtered = companies.filter(c =>
+    c.company_name.toLowerCase().includes(search.toLowerCase()) ||
+    (c.industry || '').toLowerCase().includes(search.toLowerCase()) ||
+    (c.address || '').toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <>
       <div className="page-header">
@@ -373,40 +381,106 @@ function CompaniesView({ companies, applications, onApply, student }) {
         <p>Browse and apply to available Host Training Establishments (HTEs)</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-        {companies.map(c => {
-          const app = applications.find(a => a.student_id === student.student_id && a.company_id === c.company_id);
-          return (
-            <div key={c.company_id} className="company-card">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div className="company-logo-placeholder">{c.company_name[0]}</div>
-                <div>
-                  <div className="company-name">{c.company_name}</div>
-                  <div className="company-slots">{c.slots_available} slot{c.slots_available !== 1 ? 's' : ''} available</div>
+      {/* Search Bar */}
+      <div style={{ position: 'relative', maxWidth: '420px', marginBottom: '24px' }}>
+        <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+        <input
+          type="text"
+          placeholder="Search company, industry, or location..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{
+            width: '100%', padding: '10px 14px 10px 38px',
+            background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)',
+            borderRadius: '10px', color: 'var(--text-primary)', fontSize: '0.88rem', outline: 'none'
+          }}
+          onFocus={e => e.target.style.borderColor = 'rgba(56,189,248,0.5)'}
+          onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
+        />
+        {search && (
+          <button onClick={() => setSearch('')} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem', lineHeight: 1 }}>✕</button>
+        )}
+      </div>
+
+      {search && (
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+          {filtered.length} result{filtered.length !== 1 ? 's' : ''} for "{search}"
+        </p>
+      )}
+
+      {filtered.length === 0 ? (
+        <div className="card empty-state"><p>No companies match your search.</p></div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+          {filtered.map(c => {
+            const isFull = c.slots_available === 0;
+            const app = applications.find(a => a.student_id === student.student_id && a.company_id === c.company_id);
+            return (
+              <div key={c.company_id} className="company-card" style={{ opacity: isFull ? 0.72 : 1, position: 'relative' }}>
+
+                {/* Full badge overlay */}
+                {isFull && (
+                  <div style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(244,63,94,0.15)', border: '1px solid rgba(244,63,94,0.3)', color: '#f43f5e', borderRadius: '6px', padding: '2px 8px', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                    Full
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div className="company-logo-placeholder">{c.company_name[0]}</div>
+                  <div>
+                    <div className="company-name">{c.company_name}</div>
+                    {/* Slots counter */}
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '4px',
+                      marginTop: '3px', fontSize: '0.75rem', fontWeight: 600,
+                      color: isFull ? '#f43f5e' : '#38bdf8'
+                    }}>
+                      <Users size={12} />
+                      {isFull
+                        ? 'No slots — Full'
+                        : `${c.slots_available} slot${c.slots_available !== 1 ? 's' : ''} needed`
+                      }
+                    </div>
+                  </div>
+                </div>
+
+                <div className="company-meta">
+                  <span className="company-tag"><Briefcase size={11} style={{ marginRight: 3 }} />{c.industry}</span>
+                  <span className="company-tag"><MapPin size={11} style={{ marginRight: 3 }} />{c.address}</span>
+                </div>
+
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  <div>Contact: <span style={{ color: 'var(--text-secondary)' }}>{c.contact_person}</span></div>
+                  <div>Email: <span style={{ color: 'var(--text-accent)' }}>{c.email}</span></div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
+                  <StatusBadge status={c.status} />
+                  {app ? (
+                    <StatusBadge status={app.status} />
+                  ) : isFull ? (
+                    <button
+                      disabled
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '4px',
+                        padding: '5px 10px', borderRadius: '7px', fontSize: '0.78rem', fontWeight: 600,
+                        background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)',
+                        color: 'var(--text-muted)', cursor: 'not-allowed'
+                      }}
+                    >
+                      <AlertCircle size={12} /> Not Available
+                    </button>
+                  ) : (
+                    <button className="btn btn-primary btn-sm" onClick={() => onApply(c.company_id)}>
+                      Apply <ChevronRight size={13} />
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="company-meta">
-                <span className="company-tag">🏭 {c.industry}</span>
-                <span className="company-tag">📍 {c.address}</span>
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                <div>Contact: <span style={{ color: 'var(--text-secondary)' }}>{c.contact_person}</span></div>
-                <div>Email: <span style={{ color: 'var(--text-accent)' }}>{c.email}</span></div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
-                <StatusBadge status={c.status} />
-                {app ? (
-                  <StatusBadge status={app.status} />
-                ) : (
-                  <button className="btn btn-primary btn-sm" onClick={() => onApply(c.company_id)}>
-                    Apply <ChevronRight size={13} />
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 }

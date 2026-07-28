@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { 
   Building2, GraduationCap, Shield, TrendingUp, 
-  FileCheck, Clock, ArrowRight, CheckCircle2 
+  FileCheck, Clock, ArrowRight, CheckCircle2,
+  Search, MapPin, Briefcase, Users, AlertCircle
 } from 'lucide-react';
 
 export default function LandingScreen({ onGetStarted }) {
@@ -34,6 +36,50 @@ export default function LandingScreen({ onGetStarted }) {
     "Automated Performance Scoring",
     "System-wide Analytics"
   ];
+
+  // ---- Partner Companies State ----
+  const [companies, setCompanies] = useState([]);
+  const [companySearch, setCompanySearch] = useState('');
+  const [appliedIds, setAppliedIds] = useState([]); // track which company IDs the visitor applied to
+
+  useEffect(() => {
+    // Try to fetch from backend; fall back to mock data if unavailable
+    fetch('http://localhost:5000/api/companies')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.data) setCompanies(data.data);
+      })
+      .catch(() => {
+        // Fallback mock data mirroring db.js
+        setCompanies([
+          { company_id: 1, company_name: 'TechNexus Innovations Inc.', industry: 'Software Development',             address: 'BGC, Taguig City',          contact_person: 'Sarah Jenkins',     slots_available: 5, status: 'active' },
+          { company_id: 2, company_name: 'CyberShield Solutions',      industry: 'Cybersecurity & IT Infrastructure', address: 'Ortigas Center, Pasig City', contact_person: 'Mark Anthony Tan', slots_available: 3, status: 'active' },
+          { company_id: 3, company_name: 'CloudScale Data Labs',       industry: 'Data Analytics & Cloud Services',  address: 'Ayala Ave, Makati City',     contact_person: 'Elena Gomez',      slots_available: 8, status: 'active' },
+        ]);
+      });
+  }, []);
+
+  const filteredCompanies = companies.filter(c =>
+    c.company_name.toLowerCase().includes(companySearch.toLowerCase()) ||
+    c.industry.toLowerCase().includes(companySearch.toLowerCase()) ||
+    (c.address || '').toLowerCase().includes(companySearch.toLowerCase())
+  );
+
+  const handleApply = (company_id) => {
+    if (appliedIds.includes(company_id)) return;
+    setAppliedIds(prev => [...prev, company_id]);
+  };
+
+  const industryColor = (industry = '') => {
+    if (industry.toLowerCase().includes('software') || industry.toLowerCase().includes('tech'))
+      return { bg: 'rgba(56,189,248,0.12)', color: '#38bdf8' };
+    if (industry.toLowerCase().includes('cyber') || industry.toLowerCase().includes('security'))
+      return { bg: 'rgba(167,139,250,0.12)', color: '#a78bfa' };
+    if (industry.toLowerCase().includes('data') || industry.toLowerCase().includes('cloud'))
+      return { bg: 'rgba(52,211,153,0.12)', color: '#34d399' };
+    return { bg: 'rgba(251,191,36,0.12)', color: '#fbbf24' };
+  };
+  // ---- End Partner Companies State ----
 
   return (
     <div className="landing-page" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -69,7 +115,7 @@ export default function LandingScreen({ onGetStarted }) {
       {/* Services Grid */}
       <section style={{ padding: '60px 40px', background: 'var(--color-bg-surface)', borderTop: '1px solid var(--color-border)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <h2 style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '40px', fontWeight: 700 }}>Our Services & Features</h2>
+          <h2 style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '40px', fontWeight: 700 }}>Our Services &amp; Features</h2>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px' }}>
             {services.map((s, i) => (
@@ -84,6 +130,216 @@ export default function LandingScreen({ onGetStarted }) {
           </div>
         </div>
       </section>
+
+      {/* ===== Partner Companies Section ===== */}
+      <section style={{ padding: '70px 40px', background: 'var(--color-bg-base)', borderTop: '1px solid var(--color-border)' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+
+          {/* Section Header */}
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: '999px', padding: '6px 16px', marginBottom: '16px', fontSize: '0.8rem', color: '#38bdf8', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              <Building2 size={14} /> School Partner Companies
+            </div>
+            <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '12px' }}>
+              Discover Our Partner <span style={{ background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Companies</span>
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '560px', margin: '0 auto', lineHeight: 1.6 }}>
+              Browse accredited Host Training Establishments (HTEs) partnered with the school. Apply directly to secure your OJT placement.
+            </p>
+          </div>
+
+          {/* Search Bar */}
+          <div style={{ position: 'relative', maxWidth: '480px', margin: '0 auto 36px' }}>
+            <Search size={17} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+            <input
+              type="text"
+              placeholder="Search by company name, industry, or location..."
+              value={companySearch}
+              onChange={e => setCompanySearch(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 16px 12px 42px',
+                background: 'var(--color-bg-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '12px',
+                color: 'var(--text-primary)',
+                fontSize: '0.9rem',
+                outline: 'none',
+                transition: 'border-color 0.2s',
+              }}
+              onFocus={e => e.target.style.borderColor = 'rgba(56,189,248,0.5)'}
+              onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
+            />
+            {companySearch && (
+              <button
+                onClick={() => setCompanySearch('')}
+                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1rem', cursor: 'pointer', lineHeight: 1 }}
+              >✕</button>
+            )}
+          </div>
+
+          {/* Results count */}
+          {companySearch && (
+            <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: '20px' }}>
+              {filteredCompanies.length} result{filteredCompanies.length !== 1 ? 's' : ''} for "{companySearch}"
+            </p>
+          )}
+
+          {/* Company Cards Grid */}
+          {filteredCompanies.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
+              <AlertCircle size={40} style={{ opacity: 0.4, marginBottom: '12px' }} />
+              <p style={{ fontSize: '1rem' }}>No companies found matching your search.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+              {filteredCompanies.map(c => {
+                const isFull = c.slots_available === 0;
+                const isApplied = appliedIds.includes(c.company_id);
+                const { bg: indBg, color: indColor } = industryColor(c.industry);
+
+                return (
+                  <div
+                    key={c.company_id}
+                    style={{
+                      background: 'var(--color-bg-surface)',
+                      border: isFull
+                        ? '1px solid rgba(100,116,139,0.2)'
+                        : '1px solid var(--color-border)',
+                      borderRadius: '16px',
+                      padding: '24px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '14px',
+                      opacity: isFull ? 0.7 : 1,
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}
+                    onMouseEnter={e => { if (!isFull) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.4)'; } }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+                  >
+                    {/* Full banner */}
+                    {isFull && (
+                      <div style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(244,63,94,0.15)', border: '1px solid rgba(244,63,94,0.3)', color: '#f43f5e', borderRadius: '8px', padding: '3px 10px', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                        Full
+                      </div>
+                    )}
+
+                    {/* Company Header */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                      <div style={{
+                        width: '48px', height: '48px', borderRadius: '12px',
+                        background: `linear-gradient(135deg, ${indColor}33, ${indColor}11)`,
+                        border: `1px solid ${indColor}33`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '1.3rem', fontWeight: 800, color: indColor, flexShrink: 0
+                      }}>
+                        {c.company_name[0]}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {c.company_name}
+                        </div>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: indBg, color: indColor, borderRadius: '6px', padding: '2px 8px', fontSize: '0.72rem', fontWeight: 600, marginTop: '4px' }}>
+                          <Briefcase size={11} /> {c.industry}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Details */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        <MapPin size={13} style={{ flexShrink: 0 }} /> {c.address}
+                      </div>
+                    </div>
+
+                    {/* Slots */}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      background: isFull ? 'rgba(244,63,94,0.07)' : 'rgba(56,189,248,0.07)',
+                      border: `1px solid ${isFull ? 'rgba(244,63,94,0.2)' : 'rgba(56,189,248,0.15)'}`,
+                      borderRadius: '10px', padding: '8px 12px'
+                    }}>
+                      <Users size={15} color={isFull ? '#f43f5e' : '#38bdf8'} />
+                      <div>
+                        <span style={{ fontWeight: 700, fontSize: '1rem', color: isFull ? '#f43f5e' : '#38bdf8' }}>
+                          {c.slots_available}
+                        </span>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: '4px' }}>
+                          {isFull ? '— No slots available' : `slot${c.slots_available !== 1 ? 's' : ''} available`}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action */}
+                    <div style={{ marginTop: 'auto', paddingTop: '4px' }}>
+                      {isFull ? (
+                        <button
+                          disabled
+                          style={{
+                            width: '100%', padding: '10px', borderRadius: '10px',
+                            background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)',
+                            color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600,
+                            cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                          }}
+                        >
+                          <AlertCircle size={14} /> Not Available
+                        </button>
+                      ) : isApplied ? (
+                        <button
+                          disabled
+                          style={{
+                            width: '100%', padding: '10px', borderRadius: '10px',
+                            background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)',
+                            color: '#f59e0b', fontSize: '0.85rem', fontWeight: 600,
+                            cursor: 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                          }}
+                        >
+                          <Clock size={14} /> Application Pending
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleApply(c.company_id)}
+                          style={{
+                            width: '100%', padding: '10px', borderRadius: '10px',
+                            background: 'var(--gradient-primary)', border: 'none',
+                            color: '#fff', fontSize: '0.85rem', fontWeight: 600,
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                            transition: 'opacity 0.2s',
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                        >
+                          Apply Now <ArrowRight size={14} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Login prompt after applying */}
+                    {isApplied && (
+                      <p style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '-8px' }}>
+                        <button onClick={onGetStarted} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', textDecoration: 'underline', fontSize: 'inherit' }}>Sign in</button> to complete and track your application.
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* CTA below companies */}
+          <div style={{ textAlign: 'center', marginTop: '40px' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '16px' }}>
+              Want to see all companies and track your application status?
+            </p>
+            <button className="btn btn-primary" onClick={onGetStarted} style={{ padding: '12px 28px' }}>
+              Sign In to Apply <ArrowRight size={16} />
+            </button>
+          </div>
+        </div>
+      </section>
+      {/* ===== End Partner Companies Section ===== */}
 
       {/* Highlights */}
       <section style={{ padding: '60px 40px', maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '40px', alignItems: 'center' }}>

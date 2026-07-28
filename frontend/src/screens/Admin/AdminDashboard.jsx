@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   Users, Building2, FileText, BarChart3, Plus, Settings,
-  TrendingUp, Clock, CheckCircle2, XCircle, Bell
+  TrendingUp, Clock, CheckCircle2, XCircle, Bell, Search, AlertCircle
 } from 'lucide-react';
 
 function StatusBadge({ status }) {
@@ -177,7 +177,15 @@ function ManageUsersView({ users, students, staff, admins }) {
 }
 
 function ManageCompaniesView({ companies, onAdd, setCompanies }) {
+  const [search, setSearch] = useState('');
   const deactivate = (id) => setCompanies(companies.map(c => c.company_id === id ? { ...c, status: c.status === 'active' ? 'inactive' : 'active' } : c));
+
+  const filtered = companies.filter(c =>
+    c.company_name.toLowerCase().includes(search.toLowerCase()) ||
+    (c.industry || '').toLowerCase().includes(search.toLowerCase()) ||
+    (c.contact_person || '').toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <>
       <div className="page-header">
@@ -186,22 +194,69 @@ function ManageCompaniesView({ companies, onAdd, setCompanies }) {
           <button className="btn btn-primary" onClick={onAdd}><Plus size={16} /> Add Company</button>
         </div>
       </div>
+
+      {/* Search Bar */}
+      <div style={{ position: 'relative', maxWidth: '380px', marginBottom: '20px' }}>
+        <Search size={15} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+        <input
+          type="text"
+          placeholder="Search company, industry, or contact..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{
+            width: '100%', padding: '9px 13px 9px 36px',
+            background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)',
+            borderRadius: '10px', color: 'var(--text-primary)', fontSize: '0.86rem', outline: 'none'
+          }}
+          onFocus={e => e.target.style.borderColor = 'rgba(56,189,248,0.5)'}
+          onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
+        />
+        {search && (
+          <button onClick={() => setSearch('')} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem' }}>✕</button>
+        )}
+      </div>
+
+      {search && (
+        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
+          {filtered.length} result{filtered.length !== 1 ? 's' : ''} for "{search}"
+        </p>
+      )}
+
       <div className="card">
         <div className="table-wrapper">
           <table>
-            <thead><tr><th>Company</th><th>Industry</th><th>Contact Person</th><th>Email</th><th>Slots</th><th>Status</th><th>Action</th></tr></thead>
+            <thead><tr><th>Company</th><th>Industry</th><th>Contact Person</th><th>Email</th><th>Slots Needed</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
-              {companies.map(c => (
-                <tr key={c.company_id}>
-                  <td style={{ fontWeight: 600 }}>{c.company_name}</td>
-                  <td style={{ color: 'var(--text-muted)' }}>{c.industry}</td>
-                  <td>{c.contact_person}</td>
-                  <td style={{ color: 'var(--text-accent)', fontSize: '0.78rem' }}>{c.email}</td>
-                  <td style={{ color: 'var(--status-approved)', fontWeight: 600 }}>{c.slots_available}</td>
-                  <td><StatusBadge status={c.status} /></td>
-                  <td><button className="btn btn-ghost btn-xs" onClick={() => deactivate(c.company_id)}>{c.status === 'active' ? 'Deactivate' : 'Activate'}</button></td>
-                </tr>
-              ))}
+              {filtered.map(c => {
+                const isFull = c.slots_available === 0;
+                return (
+                  <tr key={c.company_id}>
+                    <td style={{ fontWeight: 600 }}>{c.company_name}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{c.industry}</td>
+                    <td>{c.contact_person}</td>
+                    <td style={{ color: 'var(--text-accent)', fontSize: '0.78rem' }}>{c.email}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontWeight: 700, color: isFull ? '#f43f5e' : 'var(--status-approved)' }}>
+                          {c.slots_available}
+                        </span>
+                        {isFull && (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '3px',
+                            background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.25)',
+                            color: '#f43f5e', borderRadius: '5px', padding: '1px 6px',
+                            fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase'
+                          }}>
+                            <AlertCircle size={10} /> Full
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td><StatusBadge status={c.status} /></td>
+                    <td><button className="btn btn-ghost btn-xs" onClick={() => deactivate(c.company_id)}>{c.status === 'active' ? 'Deactivate' : 'Activate'}</button></td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
