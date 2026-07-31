@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
@@ -28,7 +29,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/evaluations', evaluationRoutes);
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: "OK", system: "OJTrack Backend Service", mode: "Static Mock Database (Stored Procedures Enabled)" });
+  res.json({ status: "OK", system: "OJTrack Backend Service", mode: "MySQL Database Connected" });
 });
 
 module.exports = app;

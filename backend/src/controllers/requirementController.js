@@ -1,19 +1,26 @@
-const { db } = require('../config/db');
+const { pool } = require('../config/db');
 
-exports.getRequirementTypes = (req, res) => {
-  return res.json({ success: true, data: db.requirement_types });
+exports.getRequirementTypes = async (req, res) => {
+  try {
+    const [types] = await pool.query('SELECT * FROM requirement_types');
+    return res.json({ success: true, data: types });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
 };
 
-exports.getStudentSubmissions = (req, res) => {
-  const submissions = db.student_requirements.map(sub => {
-    const student = db.students.find(s => s.student_id === sub.student_id);
-    const reqType = db.requirement_types.find(r => r.requirement_id === sub.requirement_id);
-    return {
-      ...sub,
-      student_name: student ? student.full_name : 'Unknown Student',
-      student_number: student ? student.student_number : '',
-      requirement_name: reqType ? reqType.name : 'Requirement'
-    };
-  });
-  return res.json({ success: true, data: submissions });
+exports.getStudentSubmissions = async (req, res) => {
+  try {
+    const [submissions] = await pool.query(`
+      SELECT sr.*, s.full_name as student_name, s.student_number, rt.name as requirement_name
+      FROM student_requirements sr
+      JOIN students s ON sr.student_id = s.student_id
+      JOIN requirement_types rt ON sr.requirement_id = rt.requirement_id
+    `);
+    return res.json({ success: true, data: submissions });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
 };

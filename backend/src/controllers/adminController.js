@@ -1,66 +1,100 @@
-const { db, storedProcedures } = require('../config/db');
+const { pool } = require('../config/db');
 
-exports.getAdminStats = (req, res) => {
-  const completedPlacements = db.ojt_placements.filter(p => p.status === 'completed').length;
-  const ongoingPlacements = db.ojt_placements.filter(p => p.status === 'ongoing').length;
+exports.getAdminStats = async (req, res) => {
+  try {
+    const [[{ completed_placements }]] = await pool.query('SELECT COUNT(*) as completed_placements FROM ojt_placements WHERE status = "completed"');
+    const [[{ ongoing_placements }]] = await pool.query('SELECT COUNT(*) as ongoing_placements FROM ojt_placements WHERE status = "ongoing"');
+    const [[{ total_users }]] = await pool.query('SELECT COUNT(*) as total_users FROM users');
+    const [[{ total_students }]] = await pool.query('SELECT COUNT(*) as total_students FROM students');
+    const [[{ total_staff }]] = await pool.query('SELECT COUNT(*) as total_staff FROM staff');
+    const [[{ total_companies }]] = await pool.query('SELECT COUNT(*) as total_companies FROM companies');
+    const [[{ active_companies }]] = await pool.query('SELECT COUNT(*) as active_companies FROM companies WHERE status = "active"');
+    const [[{ total_hours_rendered }]] = await pool.query('SELECT SUM(hours_rendered) as total_hours_rendered FROM attendance');
 
-  return res.json({
-    success: true,
-    data: {
-      total_users: db.users.length,
-      total_students: db.students.length,
-      total_staff: db.staff.length,
-      total_companies: db.companies.length,
-      active_companies: db.companies.filter(c => c.status === 'active').length,
-      ongoing_placements: ongoingPlacements,
-      completed_placements: completedPlacements,
-      total_hours_rendered: db.attendance.reduce((sum, a) => sum + (a.hours_rendered || 0), 0)
-    }
-  });
-};
-
-exports.getUsers = (req, res) => {
-  const fullUsers = db.users.map(u => {
-    let details = null;
-    if (u.role === 'student') details = db.students.find(s => s.user_id === u.user_id);
-    else if (u.role === 'staff') details = db.staff.find(s => s.user_id === u.user_id);
-    else if (u.role === 'admin') details = db.admins.find(a => a.user_id === u.user_id);
-    return { ...u, details };
-  });
-  return res.json({ success: true, data: fullUsers });
-};
-
-exports.createRequirementType = (req, res) => {
-  const { name, description, is_required, deadline } = req.body;
-  const newReq = {
-    requirement_id: db.requirement_types.length + 1,
-    name,
-    description,
-    is_required: is_required !== undefined ? is_required : true,
-    deadline: deadline || "2026-09-30"
-  };
-  db.requirement_types.push(newReq);
-  return res.status(201).json({ success: true, message: "Requirement type added", data: newReq });
-};
-
-exports.getPendingAccounts = (req, res) => {
-  const pendingUsers = db.users.filter(u => u.status === 'pending_admin_approval');
-  const fullPending = pendingUsers.map(u => {
-    let details = db.students.find(s => s.user_id === u.user_id);
-    return { ...u, details };
-  });
-  return res.json({ success: true, data: fullPending });
-};
-
-exports.approveAccount = (req, res) => {
-  const { user_id } = req.body;
-  const user = storedProcedures.sp_ApproveStudentAccount(user_id);
-  if (!user) {
-    return res.status(404).json({ success: false, message: "User not found" });
+    return res.json({
+      success: true,
+      data: {
+        total_users,
+        total_students,
+        total_staff,
+        total_companies,
+        active_companies,
+        ongoing_placements,
+        completed_placements,
+        total_hours_rendered: total_hours_rendered || 0
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
-  
-  // Simulate sending email
-  console.log(`[SIMULATED EMAIL] Account approved! Email sent to ${user.email} with default password.`);
+};
 
-  return res.json({ success: true, message: "Account approved successfully", data: user });
+exports.getUsers = async (req, res) => {
+  try {
+    const [users] = await pool.query('SELECT user_id, email, role, status, requires_password_change, created_at FROM users');
+    for (let u of users) {
+      if (u.role === 'student') {
+        const [details] = await pool.query('SELECT * FROM students WHERE user_id = ?', [u.user_id]);
+        u.details = details[0];
+      } else if (u.role === 'staff') {
+        const [details] = await pool.query('SELECT * FROM staff WHERE user_id = ?', [u.user_id]);
+        u.details = details[0];
+      } else if (u.role === 'admin') {
+        const [details] = await pool.query('SELECT * FROM admins WHERE user_id = ?', [u.user_id]);
+        u.details = details[0];
+      }
+    }
+    return res.json({ success: true, data: users });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.createRequirementType = async (req, res) => {
+  try {
+    const { name, description, is_required, deadline } = req.body;
+    const isReq = is_required !== undefined ? is_required : true;
+    const dl = deadline || "2026-09-30";
+    
+    const [result] = await pool.query(
+      'INSERT INTO requirement_types (name, description, is_required, deadline) VALUES (?, ?, ?, ?)',
+      [name, description, isReq, dl]
+    );
+
+    return res.status(201).json({ success: true, message: "Requirement type added", data: { requirement_id: result.insertId, name, description, is_required: isReq, deadline: dl } });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.getPendingAccounts = async (req, res) => {
+  try {
+    const [pendingUsers] = await pool.query('SELECT user_id, email, role, status, created_at FROM users WHERE status = "pending_admin_approval"');
+    for (let u of pendingUsers) {
+      const [details] = await pool.query('SELECT * FROM students WHERE user_id = ?', [u.user_id]);
+      u.details = details[0];
+    }
+    return res.json({ success: true, data: pendingUsers });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.approveAccount = async (req, res) => {
+  try {
+    const { user_id } = req.body;
+    await pool.query('CALL sp_ApproveStudentAccount(?)', [user_id]);
+    
+    // Simulate sending email
+    console.log(`[SIMULATED EMAIL] Account approved! Email sent to user_id ${user_id} with default password.`);
+
+    return res.json({ success: true, message: "Account approved successfully" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
 };
