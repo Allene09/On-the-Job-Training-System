@@ -17,6 +17,12 @@ export default function LoginScreen({ onBack }) {
   const [email, setEmail] = useState('student@school.edu.ph');
   const [password, setPassword] = useState('pass123');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  
+  // Password change state
+  const [needsPassChange, setNeedsPassChange] = useState(false);
+  const [changeUserId, setChangeUserId] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
 
   const handleRoleChange = (role) => {
     setSelectedRole(role);
@@ -25,18 +31,53 @@ export default function LoginScreen({ onBack }) {
     setPassword('pass123');
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      login(selectedRole);
-      setLoading(false);
-    }, 800);
+    setErrorMsg('');
+    const res = await login(selectedRole, email, password);
+    setLoading(false);
+    if (res.success) {
+      if (res.requires_password_change) {
+        setChangeUserId(res.user_id);
+        setNeedsPassChange(true);
+      }
+    } else {
+      setErrorMsg(res.message || 'Login failed');
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: changeUserId, new_password: newPassword })
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Automatically login after change
+        await login(selectedRole, email, newPassword);
+      } else {
+        setErrorMsg(data.message || 'Failed to change password');
+      }
+    } catch (err) {
+      setErrorMsg('Server error while changing password');
+    }
+    setLoading(false);
   };
 
   return (
-    <div className="login-screen">
-      <div className="login-card" style={{ position: 'relative' }}>
+    <div className="login-screen" style={{
+      backgroundImage: 'linear-gradient(rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.6)), url(/bg-impact.png)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backdropFilter: 'blur(10px)',
+      minHeight: '100vh'
+    }}>
+      <div className="login-card" style={{ position: 'relative', background: 'var(--color-bg-glass)', backdropFilter: 'blur(20px)' }}>
         {onBack && (
           <button 
             className="btn btn-ghost" 
@@ -70,7 +111,8 @@ export default function LoginScreen({ onBack }) {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleLogin}>
+        {!needsPassChange ? (
+          <form onSubmit={handleLogin}>
           <div className="form-group">
             <label className="form-label">Email Address</label>
             <input
@@ -114,7 +156,43 @@ export default function LoginScreen({ onBack }) {
           >
             {loading ? 'Signing in…' : `Sign in as ${ROLES.find(r => r.key === selectedRole)?.label}`}
           </button>
+          {errorMsg && (
+            <div style={{ color: '#f43f5e', fontSize: '0.85rem', marginTop: '12px', textAlign: 'center' }}>
+              {errorMsg}
+            </div>
+          )}
         </form>
+        ) : (
+          <form onSubmit={handleChangePassword}>
+            <div style={{ marginBottom: '16px', color: 'var(--text-primary)', fontSize: '0.9rem', textAlign: 'center' }}>
+              For your security, please set a new password before continuing.
+            </div>
+            <div className="form-group">
+              <label className="form-label">New Password</label>
+              <input
+                type="password"
+                className="form-input"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                required
+                minLength={6}
+              />
+            </div>
+            <button
+              type="submit"
+              className="btn btn-primary w-full"
+              disabled={loading}
+              style={{ justifyContent: 'center', marginTop: '8px', height: '44px', fontSize: '0.95rem' }}
+            >
+              {loading ? 'Updating…' : 'Update Password & Login'}
+            </button>
+            {errorMsg && (
+              <div style={{ color: '#f43f5e', fontSize: '0.85rem', marginTop: '12px', textAlign: 'center' }}>
+                {errorMsg}
+              </div>
+            )}
+          </form>
+        )}
 
         {/* Demo hint */}
         <div style={{

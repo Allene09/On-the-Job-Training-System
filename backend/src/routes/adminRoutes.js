@@ -5,5 +5,7 @@ const adminController = require('../controllers/adminController');
 router.get('/stats', adminController.getAdminStats);
 router.get('/users', adminController.getUsers);
 router.post('/requirements/type', adminController.createRequirementType);
+router.get('/pending-accounts', adminController.getPendingAccounts);
+router.post('/approve-account', adminController.approveAccount);
 
 module.exports = router;

@@ -22,6 +22,7 @@ const NAV_CONFIG = {
   ],
   staff: [
     { id: 'dashboard',    label: 'Dashboard',          icon: LayoutDashboard },
+    { id: 'profiling',    label: 'Student Profiling',  icon: Users },
     { id: 'requirements', label: 'Review Requirements',icon: FileCheck },
     { id: 'applications', label: 'Applications',       icon: Briefcase },
     { id: 'attendance',   label: 'Attendance Monitor', icon: Clock },
@@ -31,6 +32,7 @@ const NAV_CONFIG = {
     { id: 'dashboard',    label: 'Dashboard',          icon: LayoutDashboard },
     { id: 'users',        label: 'Manage Users',       icon: Users },
     { id: 'companies',    label: 'Partner Companies',  icon: Building2 },
+    { id: 'pending',      label: 'Pending Accounts',   icon: Users },
     { id: 'requirements', label: 'Requirements Config',icon: Settings },
     { id: 'reports',      label: 'Reports & Analytics',icon: BarChart3 }
   ]
@@ -39,7 +41,8 @@ const NAV_CONFIG = {
 const PAGE_TITLES = {
   dashboard: 'Dashboard', requirements: 'Requirements', companies: 'Companies',
   attendance: 'Attendance / DTR', reports: 'Reports', progress: 'Progress & Evaluation',
-  users: 'Manage Users', applications: 'Applications', evaluations: 'Evaluations'
+  users: 'Manage Users', applications: 'Applications', evaluations: 'Evaluations',
+  profiling: 'Student Profiling', pending: 'Pending Accounts', profile: 'My Profile'
 };
 
 function initials(name = '') {
@@ -75,10 +78,10 @@ function Sidebar({ navItems, activePage, setActivePage, currentUser, onLogout, o
         {/* Nav */}
         <nav className="sidebar-nav">
           <div className="nav-group-label">Navigation</div>
-          {navItems.map(item => (
+          {navItems.map((item, i) => (
             <button
               key={item.id}
-              className={`nav-item ${activePage === item.id ? 'active' : ''}`}
+              className={`nav-item animate-slide-in-left delay-${(i + 1) * 100} ${activePage === item.id ? 'active' : ''}`}
               onClick={() => { setActivePage(item.id); setOpen(false); }}
             >
               <item.icon size={18} />
@@ -88,7 +91,7 @@ function Sidebar({ navItems, activePage, setActivePage, currentUser, onLogout, o
         </nav>
 
         {/* User footer */}
-        <div className="sidebar-footer">
+        <div className="sidebar-footer" style={{ cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} onClick={() => { setActivePage('profile'); setOpen(false); }}>
           <div className="user-info">
             <div className="user-avatar">{initials(displayName)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -96,7 +99,7 @@ function Sidebar({ navItems, activePage, setActivePage, currentUser, onLogout, o
               <div className="user-email" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser.email}</div>
             </div>
             <button
-              onClick={onLogout}
+              onClick={(e) => { e.stopPropagation(); onLogout(); }}
               title="Sign out"
               style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '6px', display: 'flex', flexShrink: 0 }}
             >
@@ -164,9 +167,11 @@ function AppShell() {
         </div>
 
         {/* Render role dashboard */}
-        {DashboardComponent && (
-          <DashboardComponent activePage={activePage} setActivePage={setActivePage} />
-        )}
+        <div key={activePage} className="animate-fade-in" style={{ height: '100%' }}>
+          {DashboardComponent && (
+            <DashboardComponent activePage={activePage} setActivePage={setActivePage} currentUser={currentUser} />
+          )}
+        </div>
       </main>
     </div>
   );

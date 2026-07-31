@@ -1,4 +1,4 @@
-const { db } = require('../config/db');
+const { db, storedProcedures } = require('../config/db');
 
 exports.getAdminStats = (req, res) => {
   const completedPlacements = db.ojt_placements.filter(p => p.status === 'completed').length;
@@ -41,4 +41,26 @@ exports.createRequirementType = (req, res) => {
   };
   db.requirement_types.push(newReq);
   return res.status(201).json({ success: true, message: "Requirement type added", data: newReq });
+};
+
+exports.getPendingAccounts = (req, res) => {
+  const pendingUsers = db.users.filter(u => u.status === 'pending_admin_approval');
+  const fullPending = pendingUsers.map(u => {
+    let details = db.students.find(s => s.user_id === u.user_id);
+    return { ...u, details };
+  });
+  return res.json({ success: true, data: fullPending });
+};
+
+exports.approveAccount = (req, res) => {
+  const { user_id } = req.body;
+  const user = storedProcedures.sp_ApproveStudentAccount(user_id);
+  if (!user) {
+    return res.status(404).json({ success: false, message: "User not found" });
+  }
+  
+  // Simulate sending email
+  console.log(`[SIMULATED EMAIL] Account approved! Email sent to ${user.email} with default password.`);
+
+  return res.json({ success: true, message: "Account approved successfully", data: user });
 };

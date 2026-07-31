@@ -136,6 +136,7 @@ export default function StudentDashboard({ activePage, setActivePage }) {
 
   const pages = {
     dashboard: <DashboardView student={student} placement={placement} company={company} hoursRendered={hoursRendered} notifications={notifications} unreadNotifs={unreadNotifs} evaluations={mockData.evaluations} announcements={mockData.announcements} />,
+    profile: <ProfileView student={student} currentUser={currentUser} />,
     requirements: <RequirementsView reqChecklist={reqChecklist} onSubmit={submitRequirement} />,
     companies: <CompaniesView companies={mockData.companies} applications={applications} onApply={applyCompany} student={student} />,
     attendance: <AttendanceView attendance={attendance.filter(a => a.placement_id === placement?.placement_id)} hoursRendered={hoursRendered} required={student.required_hours} onAddDTR={() => setShowDTRModal(true)} />,
@@ -218,28 +219,28 @@ function DashboardView({ student, placement, company, hoursRendered, notificatio
       </div>
 
       <div className="stat-grid">
-        <div className="stat-card cyan">
+        <div className="stat-card cyan animate-fade-in-up delay-100">
           <div className="stat-icon cyan"><TrendingUp size={20} /></div>
           <div>
             <div className="stat-value">{hoursRendered}h</div>
             <div className="stat-label">Hours Rendered</div>
           </div>
         </div>
-        <div className="stat-card purple">
+        <div className="stat-card purple animate-fade-in-up delay-200">
           <div className="stat-icon purple"><Clock size={20} /></div>
           <div>
             <div className="stat-value">{student.required_hours - hoursRendered > 0 ? (student.required_hours - hoursRendered).toFixed(1) : 0}h</div>
             <div className="stat-label">Hours Remaining</div>
           </div>
         </div>
-        <div className="stat-card green">
+        <div className="stat-card green animate-fade-in-up delay-300">
           <div className="stat-icon green"><Award size={20} /></div>
           <div>
             <div className="stat-value">{latestEval ? `${latestEval.total_score}%` : 'N/A'}</div>
             <div className="stat-label">Latest Score</div>
           </div>
         </div>
-        <div className="stat-card orange">
+        <div className="stat-card orange animate-fade-in-up delay-400">
           <div className="stat-icon orange"><Bell size={20} /></div>
           <div>
             <div className="stat-value">{unreadNotifs.length}</div>
@@ -425,8 +426,10 @@ function CompaniesView({ companies, applications, onApply, student }) {
                   </div>
                 )}
 
+                {/* Company Photo */}
+                <div style={{ height: '120px', borderRadius: '12px 12px 0 0', background: `url(${c.photo_url || '/company1.png'}) center/cover no-repeat`, marginBottom: '12px', marginTop: '-16px', marginLeft: '-16px', paddingRight: '32px', width: 'calc(100% + 32px)' }} />
+
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div className="company-logo-placeholder">{c.company_name[0]}</div>
                   <div>
                     <div className="company-name">{c.company_name}</div>
                     {/* Slots counter */}
@@ -452,6 +455,9 @@ function CompaniesView({ companies, applications, onApply, student }) {
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                   <div>Contact: <span style={{ color: 'var(--text-secondary)' }}>{c.contact_person}</span></div>
                   <div>Email: <span style={{ color: 'var(--text-accent)' }}>{c.email}</span></div>
+                  {c.requirements && (
+                    <div style={{ marginTop: '4px' }}>Requirements: <span style={{ color: 'var(--text-secondary)' }}>{c.requirements}</span></div>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
@@ -644,6 +650,97 @@ function ProgressView({ placement, hoursRendered, evaluations, company }) {
             <div className="empty-state"><p>No evaluation submitted yet.</p></div>
           )}
         </div>
+      </div>
+    </>
+  );
+}
+
+function ProfileView({ student, currentUser }) {
+  const [formData, setFormData] = useState({
+    first_name: student.full_name ? student.full_name.split(' ')[0] : '',
+    last_name: student.full_name ? student.full_name.split(' ').slice(1).join(' ') : '',
+    course: student.course || '',
+    year_section: student.year_level || '',
+    gender: student.gender || '',
+    email: currentUser.email || '',
+    password: ''
+  });
+  const [msg, setMsg] = useState({ type: '', text: '' });
+
+  const handleSave = (e) => {
+    e.preventDefault();
+    // Since we are just using a static mock database on the frontend,
+    // we'd normally call an API here. For now, just show a success message.
+    setMsg({ type: 'success', text: 'Profile updated successfully!' });
+  };
+
+  return (
+    <>
+      <div className="page-header">
+        <h1>My Profile</h1>
+        <p>Manage your personal information and account settings</p>
+      </div>
+
+      <div className="card" style={{ maxWidth: '600px' }}>
+        <div className="card-header">
+          <div className="card-title">Edit Profile</div>
+        </div>
+
+        {msg.text && (
+          <div style={{ padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.86rem', background: msg.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(244,63,94,0.1)', color: msg.type === 'success' ? 'var(--status-approved)' : 'var(--status-rejected)' }}>
+            {msg.text}
+          </div>
+        )}
+
+        <form onSubmit={handleSave}>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label">First Name</label>
+              <input type="text" className="form-input" required value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} />
+            </div>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label">Last Name</label>
+              <input type="text" className="form-input" required value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Course</label>
+            <input type="text" className="form-input" required value={formData.course} onChange={e => setFormData({...formData, course: e.target.value})} />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Year and Section</label>
+            <input type="text" className="form-input" required value={formData.year_section} onChange={e => setFormData({...formData, year_section: e.target.value})} />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Gender</label>
+            <select className="form-input" required value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})}>
+              <option value="">Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div className="divider" style={{ margin: '24px 0' }} />
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '16px' }}>Account Settings</h3>
+
+          <div className="form-group">
+            <label className="form-label">Email Address</label>
+            <input type="email" className="form-input" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Change Password</label>
+            <input type="password" className="form-input" placeholder="Leave blank to keep current password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+          </div>
+
+          <div style={{ marginTop: '24px' }}>
+            <button type="submit" className="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
       </div>
     </>
   );

@@ -7,19 +7,20 @@ CREATE PROCEDURE sp_RegisterStudent(
     IN p_password_hash VARCHAR(255),
     IN p_student_number VARCHAR(30),
     IN p_full_name VARCHAR(150),
+    IN p_gender VARCHAR(20),
     IN p_course VARCHAR(100),
-    IN p_year_level VARCHAR(20)
+    IN p_year_level VARCHAR(50)
 )
 BEGIN
     DECLARE new_user_id INT;
 
-    INSERT INTO users (email, password_hash, role, status)
-    VALUES (p_email, p_password_hash, 'student', 'pending');
+    INSERT INTO users (email, password_hash, role, status, requires_password_change)
+    VALUES (p_email, p_password_hash, 'student', 'pending_admin_approval', TRUE);
 
     SET new_user_id = LAST_INSERT_ID();
 
-    INSERT INTO students (user_id, student_number, full_name, course, year_level)
-    VALUES (new_user_id, p_student_number, p_full_name, p_course, p_year_level);
+    INSERT INTO students (user_id, student_number, full_name, gender, course, year_level)
+    VALUES (new_user_id, p_student_number, p_full_name, p_gender, p_course, p_year_level);
 END$$
 
 CREATE PROCEDURE sp_SubmitRequirement(
@@ -150,6 +151,15 @@ BEGIN
     IF v_rendered >= v_required THEN
         UPDATE ojt_placements SET status = 'completed' WHERE placement_id = p_placement_id;
     END IF;
+END$$
+
+CREATE PROCEDURE sp_ApproveStudentAccount(
+    IN p_user_id INT
+)
+BEGIN
+    UPDATE users
+    SET status = 'active'
+    WHERE user_id = p_user_id;
 END$$
 
 DELIMITER ;

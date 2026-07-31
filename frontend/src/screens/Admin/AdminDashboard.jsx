@@ -15,7 +15,7 @@ function StatusBadge({ status }) {
   );
 }
 
-export default function AdminDashboard({ activePage }) {
+export default function AdminDashboard({ activePage, currentUser }) {
   const { mockData } = useAuth();
   const [companies, setCompanies] = useState([...mockData.companies]);
   const [reqTypes, setReqTypes] = useState([...mockData.requirement_types]);
@@ -51,9 +51,11 @@ export default function AdminDashboard({ activePage }) {
   const pages = {
     dashboard: <AdminOverview stats={stats} announcements={mockData.announcements} />,
     users: <ManageUsersView users={mockData.users} students={mockData.students} staff={mockData.staff} admins={mockData.admins} />,
+    pending: <PendingAccountsView />,
     companies: <ManageCompaniesView companies={companies} onAdd={() => setShowCompanyModal(true)} setCompanies={setCompanies} />,
     requirements: <ManageRequirementsView reqTypes={reqTypes} onAdd={() => setShowReqModal(true)} setReqTypes={setReqTypes} />,
-    reports: <ReportsView stats={stats} placements={mockData.ojt_placements} students={mockData.students} companies={mockData.companies} />
+    reports: <ReportsView stats={stats} placements={mockData.ojt_placements} students={mockData.students} companies={mockData.companies} />,
+    profile: <AdminProfileView currentUser={currentUser} />
   };
 
   return (
@@ -106,13 +108,13 @@ function AdminOverview({ stats, announcements }) {
     <>
       <div className="page-header"><h1>Admin Dashboard</h1><p>System-wide overview and management tools</p></div>
       <div className="stat-grid">
-        <div className="stat-card cyan"><div className="stat-icon cyan"><Users size={20} /></div><div><div className="stat-value">{stats.total_users}</div><div className="stat-label">Total Users</div></div></div>
-        <div className="stat-card purple"><div className="stat-icon purple"><Building2 size={20} /></div><div><div className="stat-value">{stats.total_companies}</div><div className="stat-label">Partner Companies</div></div></div>
-        <div className="stat-card green"><div className="stat-icon green"><TrendingUp size={20} /></div><div><div className="stat-value">{stats.ongoing_placements}</div><div className="stat-label">Active Placements</div></div></div>
-        <div className="stat-card orange"><div className="stat-icon orange"><Clock size={20} /></div><div><div className="stat-value">{stats.total_hours}h</div><div className="stat-label">Hours Tracked</div></div></div>
+        <div className="stat-card cyan animate-fade-in-up delay-100"><div className="stat-icon cyan"><Users size={20} /></div><div><div className="stat-value">{stats.total_users}</div><div className="stat-label">Total Users</div></div></div>
+        <div className="stat-card purple animate-fade-in-up delay-200"><div className="stat-icon purple"><Building2 size={20} /></div><div><div className="stat-value">{stats.total_companies}</div><div className="stat-label">Partner Companies</div></div></div>
+        <div className="stat-card green animate-fade-in-up delay-300"><div className="stat-icon green"><TrendingUp size={20} /></div><div><div className="stat-value">{stats.ongoing_placements}</div><div className="stat-label">Active Placements</div></div></div>
+        <div className="stat-card orange animate-fade-in-up delay-400"><div className="stat-icon orange"><Clock size={20} /></div><div><div className="stat-value">{stats.total_hours}h</div><div className="stat-label">Hours Tracked</div></div></div>
       </div>
       <div className="grid-2" style={{ gap: '20px' }}>
-        <div className="card">
+        <div className="card animate-fade-in-up delay-300">
           <div className="card-header"><div className="card-title">Quick Stats</div></div>
           {[
             ['Students', stats.total_students],
@@ -126,7 +128,7 @@ function AdminOverview({ stats, announcements }) {
             </div>
           ))}
         </div>
-        <div className="card">
+        <div className="card animate-fade-in-up delay-400">
           <div className="card-header"><div className="card-title">Announcements</div></div>
           {announcements.map(a => (
             <div key={a.announcement_id} className="announcement-card">
@@ -225,16 +227,30 @@ function ManageCompaniesView({ companies, onAdd, setCompanies }) {
       <div className="card">
         <div className="table-wrapper">
           <table>
-            <thead><tr><th>Company</th><th>Industry</th><th>Contact Person</th><th>Email</th><th>Slots Needed</th><th>Status</th><th>Action</th></tr></thead>
+            <thead><tr><th>Company</th><th>Industry</th><th>Contact / Requirements</th><th>Slots Needed</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
               {filtered.map(c => {
                 const isFull = c.slots_available === 0;
                 return (
                   <tr key={c.company_id}>
-                    <td style={{ fontWeight: 600 }}>{c.company_name}</td>
+                    <td style={{ fontWeight: 600 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {c.photo_url ? (
+                          <div style={{ width: '40px', height: '40px', borderRadius: '6px', background: `url(${c.photo_url}) center/cover` }} />
+                        ) : (
+                          <div style={{ width: '40px', height: '40px', borderRadius: '6px', background: 'var(--color-bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 800 }}>{c.company_name[0]}</div>
+                        )}
+                        <div>
+                          <div>{c.company_name}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.email}</div>
+                        </div>
+                      </div>
+                    </td>
                     <td style={{ color: 'var(--text-muted)' }}>{c.industry}</td>
-                    <td>{c.contact_person}</td>
-                    <td style={{ color: 'var(--text-accent)', fontSize: '0.78rem' }}>{c.email}</td>
+                    <td>
+                      <div>{c.contact_person}</div>
+                      {c.requirements && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Reqs: {c.requirements}</div>}
+                    </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span style={{ fontWeight: 700, color: isFull ? '#f43f5e' : 'var(--status-approved)' }}>
@@ -308,7 +324,7 @@ function ReportsView({ stats, placements, students, companies }) {
         <div className="stat-card purple"><div className="stat-icon purple"><TrendingUp size={20} /></div><div><div className="stat-value">{stats.ongoing_placements}</div><div className="stat-label">OJT Ongoing</div></div></div>
         <div className="stat-card orange"><div className="stat-icon orange"><Clock size={20} /></div><div><div className="stat-value">{stats.total_hours}h</div><div className="stat-label">Total Hours Tracked</div></div></div>
       </div>
-      <div className="card">
+      <div className="card animate-fade-in-up delay-200">
         <div className="card-header"><div className="card-title">Placement Summary</div></div>
         <div className="table-wrapper">
           <table>
@@ -340,6 +356,152 @@ function ReportsView({ stats, placements, students, companies }) {
             </tbody>
           </table>
         </div>
+      </div>
+    </>
+  );
+}
+
+function PendingAccountsView() {
+  const [pendingAccounts, setPendingAccounts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchPendingAccounts = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('http://localhost:5000/api/admin/pending-accounts');
+      const data = await res.json();
+      if (data.success) {
+        setPendingAccounts(data.data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  };
+
+  useState(() => {
+    fetchPendingAccounts();
+  }, []);
+
+  const handleApprove = async (user_id) => {
+    if (!window.confirm("Approve this account? An email will be sent to the user with their temporary password.")) return;
+    try {
+      const res = await fetch('http://localhost:5000/api/admin/approve-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        fetchPendingAccounts();
+      } else {
+        alert(data.message || 'Error approving account');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Server error while approving account');
+    }
+  };
+
+  return (
+    <>
+      <div className="page-header">
+        <h1>Pending Accounts</h1>
+        <p>Review and approve new student accounts</p>
+      </div>
+      <div className="card">
+        <div className="table-wrapper">
+          {loading ? (
+            <div style={{ padding: '20px', textAlign: 'center' }}>Loading pending accounts...</div>
+          ) : pendingAccounts.length === 0 ? (
+            <div style={{ padding: '20px', textAlign: 'center' }}>No pending accounts at this time.</div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Full Name</th>
+                  <th>Email</th>
+                  <th>Student Number</th>
+                  <th>Course / Year</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingAccounts.map(u => (
+                  <tr key={u.user_id}>
+                    <td style={{ fontWeight: 600 }}>{u.details?.full_name || 'N/A'}</td>
+                    <td style={{ color: 'var(--text-accent)' }}>{u.email}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{u.details?.student_number || 'N/A'}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{u.details?.course} - {u.details?.year_level}</td>
+                    <td><StatusBadge status="pending" /></td>
+                    <td>
+                      <button className="btn btn-success btn-xs" onClick={() => handleApprove(u.user_id)}>
+                        <CheckCircle2 size={12} /> Approve Account
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function AdminProfileView({ currentUser }) {
+  const [formData, setFormData] = useState({
+    first_name: currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ')[0] : '',
+    last_name: currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ').slice(1).join(' ') : '',
+    email: currentUser?.email || '',
+    password: ''
+  });
+  const [msg, setMsg] = useState({ type: '', text: '' });
+
+  const handleSave = (e) => {
+    e.preventDefault();
+    setMsg({ type: 'success', text: 'Admin profile updated successfully!' });
+  };
+
+  return (
+    <>
+      <div className="page-header">
+        <h1>My Profile</h1>
+        <p>Manage your administrator account settings</p>
+      </div>
+      <div className="card animate-fade-in-up delay-100" style={{ maxWidth: '600px' }}>
+        <div className="card-header"><div className="card-title">Edit Profile</div></div>
+        {msg.text && (
+          <div style={{ padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.86rem', background: msg.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(244,63,94,0.1)', color: msg.type === 'success' ? 'var(--status-approved)' : 'var(--status-rejected)' }}>
+            {msg.text}
+          </div>
+        )}
+        <form onSubmit={handleSave}>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label">First Name</label>
+              <input type="text" className="form-input" required value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} />
+            </div>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label">Last Name</label>
+              <input type="text" className="form-input" required value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Email Address</label>
+            <input type="email" className="form-input" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Change Password</label>
+            <input type="password" className="form-input" placeholder="Leave blank to keep current password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+          </div>
+          <div style={{ marginTop: '24px' }}>
+            <button type="submit" className="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
       </div>
     </>
   );

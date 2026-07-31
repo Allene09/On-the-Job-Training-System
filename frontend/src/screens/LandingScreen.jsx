@@ -82,7 +82,19 @@ export default function LandingScreen({ onGetStarted }) {
   // ---- End Partner Companies State ----
 
   return (
-    <div className="landing-page" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="landing-page" style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      flexDirection: 'column',
+      backgroundImage: 'linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.95)), url(/bg-impact.png)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundAttachment: 'fixed'
+    }}>
+      {/* 21st Century Floating Background Orbs */}
+      <div className="floating-orb orb-primary" style={{ width: '400px', height: '400px', top: '10%', left: '5%' }}></div>
+      <div className="floating-orb orb-secondary" style={{ width: '500px', height: '500px', bottom: '20%', right: '5%', animationDelay: '2s' }}></div>
+
       {/* Navbar */}
       <nav style={{ padding: '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg-glass)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -100,26 +112,26 @@ export default function LandingScreen({ onGetStarted }) {
       </nav>
 
       {/* Hero Section */}
-      <section style={{ padding: '80px 20px', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-        <h1 style={{ fontSize: '3.5rem', fontWeight: 800, marginBottom: '20px', lineHeight: 1.1, maxWidth: '800px', margin: '0 auto 24px' }}>
-          Streamline Your <span style={{ color: '#38bdf8' }}>On-the-Job Training</span> Workflows
+      <section style={{ padding: '80px 20px', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', position: 'relative', zIndex: 1 }}>
+        <h1 className="typewriter-text" style={{ fontSize: '3.5rem', fontWeight: 800, marginBottom: '20px', lineHeight: 1.1, margin: '0 auto 24px', display: 'inline-block', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+          Streamline Your <span style={{ color: '#38bdf8' }}>OJTrack Monitoring System</span>
         </h1>
-        <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto 40px', lineHeight: 1.6 }}>
+        <p className="animate-fade-in-up delay-200" style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto 40px', lineHeight: 1.6 }}>
           OJTrack digitizes the entire internship process — from requirement submissions and company applications to daily time records and final evaluations.
         </p>
-        <button className="btn btn-primary" style={{ padding: '16px 32px', fontSize: '1.1rem', borderRadius: '30px' }} onClick={onGetStarted}>
+        <button className="btn btn-primary animate-fade-in-up delay-300" style={{ padding: '16px 32px', fontSize: '1.1rem', borderRadius: '30px' }} onClick={onGetStarted}>
           Access System
         </button>
       </section>
 
       {/* Services Grid */}
-      <section style={{ padding: '60px 40px', background: 'var(--color-bg-surface)', borderTop: '1px solid var(--color-border)' }}>
+      <section style={{ padding: '60px 40px', background: 'rgba(30, 41, 59, 0.5)', borderTop: '1px solid rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <h2 style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '40px', fontWeight: 700 }}>Our Services &amp; Features</h2>
+          <h2 className="animate-fade-in-up" style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '40px', fontWeight: 700 }}>Our Services &amp; Features</h2>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px' }}>
             {services.map((s, i) => (
-              <div key={i} className="card" style={{ padding: '32px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div key={i} className={`card animate-fade-in-up delay-${(i + 1) * 100}`} style={{ padding: '32px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <div style={{ background: 'var(--color-bg-deep)', padding: '16px', borderRadius: '16px', marginBottom: '20px' }}>
                   {s.icon}
                 </div>
@@ -136,7 +148,7 @@ export default function LandingScreen({ onGetStarted }) {
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
           {/* Section Header */}
-          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <div className="animate-fade-in-up delay-100" style={{ textAlign: 'center', marginBottom: '40px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: '999px', padding: '6px 16px', marginBottom: '16px', fontSize: '0.8rem', color: '#38bdf8', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
               <Building2 size={14} /> School Partner Companies
             </div>
@@ -149,7 +161,7 @@ export default function LandingScreen({ onGetStarted }) {
           </div>
 
           {/* Search Bar */}
-          <div style={{ position: 'relative', maxWidth: '480px', margin: '0 auto 36px' }}>
+          <div className="animate-fade-in-up delay-200" style={{ position: 'relative', maxWidth: '480px', margin: '0 auto 36px' }}>
             <Search size={17} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
             <input
               type="text"
@@ -193,32 +205,37 @@ export default function LandingScreen({ onGetStarted }) {
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
-              {filteredCompanies.map(c => {
+              {filteredCompanies.map((c, i) => {
                 const isFull = c.slots_available === 0;
                 const isApplied = appliedIds.includes(c.company_id);
                 const { bg: indBg, color: indColor } = industryColor(c.industry);
+                const animDelay = (i % 3 + 3) * 100; // stagger delays
 
                 return (
                   <div
                     key={c.company_id}
+                    className={`animate-fade-in-up delay-${animDelay}`}
                     style={{
-                      background: 'var(--color-bg-surface)',
+                      background: 'rgba(30, 41, 59, 0.7)',
+                      backdropFilter: 'blur(12px)',
                       border: isFull
-                        ? '1px solid rgba(100,116,139,0.2)'
-                        : '1px solid var(--color-border)',
+                        ? '1px solid rgba(100,116,139,0.3)'
+                        : '1px solid rgba(255,255,255,0.1)',
                       borderRadius: '16px',
-                      padding: '24px',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '14px',
                       opacity: isFull ? 0.7 : 1,
                       transition: 'transform 0.2s, box-shadow 0.2s',
                       position: 'relative',
                       overflow: 'hidden',
                     }}
-                    onMouseEnter={e => { if (!isFull) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.4)'; } }}
+                    onMouseEnter={e => { if (!isFull) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.5)'; } }}
                     onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
                   >
+                    {/* Company Photo */}
+                    <div style={{ height: '140px', width: '100%', background: `url(${c.photo_url || '/company1.png'}) center/cover no-repeat` }} />
+                    
+                    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
                     {/* Full banner */}
                     {isFull && (
                       <div style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(244,63,94,0.15)', border: '1px solid rgba(244,63,94,0.3)', color: '#f43f5e', borderRadius: '8px', padding: '3px 10px', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
@@ -248,10 +265,15 @@ export default function LandingScreen({ onGetStarted }) {
                     </div>
 
                     {/* Details */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                         <MapPin size={13} style={{ flexShrink: 0 }} /> {c.address}
                       </div>
+                      {c.requirements && (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Requirements:</span> {c.requirements}
+                        </div>
+                      )}
                     </div>
 
                     {/* Slots */}
@@ -322,6 +344,7 @@ export default function LandingScreen({ onGetStarted }) {
                         <button onClick={onGetStarted} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', textDecoration: 'underline', fontSize: 'inherit' }}>Sign in</button> to complete and track your application.
                       </p>
                     )}
+                    </div>
                   </div>
                 );
               })}
@@ -343,20 +366,20 @@ export default function LandingScreen({ onGetStarted }) {
 
       {/* Highlights */}
       <section style={{ padding: '60px 40px', maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '40px', alignItems: 'center' }}>
-        <div style={{ flex: '1 1 400px' }}>
+        <div className="animate-fade-in-up delay-100" style={{ flex: '1 1 400px' }}>
           <h2 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: '20px' }}>Why Choose OJTrack?</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '30px', fontSize: '1.05rem', lineHeight: 1.6 }}>
             Managing student internships manually leads to lost paperwork, inaccurate DTRs, and delayed approvals. We provide a single source of truth for students, coordinators, and administrators.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {features.map((f, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1rem', color: 'var(--text-primary)' }}>
+              <div key={i} className={`animate-fade-in-up delay-${(i % 5 + 2) * 100}`} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1rem', color: 'var(--text-primary)' }}>
                 <CheckCircle2 size={20} color="#10b981" /> {f}
               </div>
             ))}
           </div>
         </div>
-        <div style={{ flex: '1 1 400px', display: 'flex', justifyContent: 'center' }}>
+        <div className="animate-fade-in-up delay-400" style={{ flex: '1 1 400px', display: 'flex', justifyContent: 'center' }}>
           <div style={{ 
             width: '100%', maxWidth: '400px', height: '300px', borderRadius: '24px', 
             background: 'var(--gradient-card-glow)', border: '1px solid var(--color-border-accent)',

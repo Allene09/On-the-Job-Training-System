@@ -19,7 +19,7 @@ function StatusBadge({ status }) {
   );
 }
 
-export default function StaffDashboard({ activePage }) {
+export default function StaffDashboard({ activePage, currentUser }) {
   const { mockData } = useAuth();
   const [submissions, setSubmissions] = useState([...mockData.student_requirements]);
   const [applications, setApplications] = useState([...mockData.applications]);
@@ -82,10 +82,12 @@ export default function StaffDashboard({ activePage }) {
 
   const pages = {
     dashboard: <StaffOverview pendingSubmissions={pendingSubmissions} pendingApps={pendingApps} evaluations={evaluations} announcements={mockData.announcements} notifications={mockData.notifications.filter(n => n.user_id === 2)} />,
+    profiling: <StudentProfilingView />,
     requirements: <ReviewRequirementsView enrichedSubmissions={enrichedSubmissions} onReview={reviewRequirement} />,
     applications: <ApplicationsView enrichedApps={enrichedApps} onApprove={approveApplication} onReject={rejectApplication} />,
     attendance: <AttendanceMonitorView placements={mockData.ojt_placements} students={mockData.students} companies={mockData.companies} attendance={mockData.attendance} />,
-    evaluations: <EvaluationsView evaluations={evaluations} placements={mockData.ojt_placements} students={mockData.students} onAddEval={() => setShowEvalModal(true)} />
+    evaluations: <EvaluationsView evaluations={evaluations} placements={mockData.ojt_placements} students={mockData.students} onAddEval={() => setShowEvalModal(true)} />,
+    profile: <StaffProfileView currentUser={currentUser} />
   };
 
   return (
@@ -141,13 +143,13 @@ function StaffOverview({ pendingSubmissions, pendingApps, evaluations, announcem
         <p>Monitor students, review submissions, and manage OJT placements</p>
       </div>
       <div className="stat-grid">
-        <div className="stat-card cyan"><div className="stat-icon cyan"><FileCheck size={20} /></div><div><div className="stat-value">{pendingSubmissions.length}</div><div className="stat-label">Pending Requirements</div></div></div>
-        <div className="stat-card purple"><div className="stat-icon purple"><Briefcase size={20} /></div><div><div className="stat-value">{pendingApps.length}</div><div className="stat-label">Pending Applications</div></div></div>
-        <div className="stat-card green"><div className="stat-icon green"><Star size={20} /></div><div><div className="stat-value">{evaluations.length}</div><div className="stat-label">Evaluations Done</div></div></div>
-        <div className="stat-card orange"><div className="stat-icon orange"><Bell size={20} /></div><div><div className="stat-value">{notifications.filter(n => !n.is_read).length}</div><div className="stat-label">Unread Alerts</div></div></div>
+        <div className="stat-card cyan animate-fade-in-up delay-100"><div className="stat-icon cyan"><FileCheck size={20} /></div><div><div className="stat-value">{pendingSubmissions.length}</div><div className="stat-label">Pending Requirements</div></div></div>
+        <div className="stat-card purple animate-fade-in-up delay-200"><div className="stat-icon purple"><Briefcase size={20} /></div><div><div className="stat-value">{pendingApps.length}</div><div className="stat-label">Pending Applications</div></div></div>
+        <div className="stat-card green animate-fade-in-up delay-300"><div className="stat-icon green"><Star size={20} /></div><div><div className="stat-value">{evaluations.length}</div><div className="stat-label">Evaluations Done</div></div></div>
+        <div className="stat-card orange animate-fade-in-up delay-400"><div className="stat-icon orange"><Bell size={20} /></div><div><div className="stat-value">{notifications.filter(n => !n.is_read).length}</div><div className="stat-label">Unread Alerts</div></div></div>
       </div>
       <div className="grid-2" style={{ gap: '20px' }}>
-        <div className="card">
+        <div className="card animate-fade-in-up delay-200">
           <div className="card-header"><div className="card-title">Recent Notifications</div></div>
           {notifications.length === 0 ? <div className="empty-state"><p>No notifications.</p></div> : notifications.map(n => (
             <div key={n.notification_id} className={`notif-item ${n.is_read ? '' : 'unread'}`}>
@@ -156,7 +158,7 @@ function StaffOverview({ pendingSubmissions, pendingApps, evaluations, announcem
             </div>
           ))}
         </div>
-        <div className="card">
+        <div className="card animate-fade-in-up delay-500">
           <div className="card-header"><div className="card-title">Announcements</div></div>
           {announcements.map(a => (
             <div key={a.announcement_id} className="announcement-card">
@@ -333,6 +335,177 @@ function EvaluationsView({ evaluations, placements, students, onAddEval }) {
             </div>
           );
         })}
+      </div>
+    </>
+  );
+}
+
+function StudentProfilingView() {
+  const [formData, setFormData] = useState({
+    first_name: '',
+    last_name: '',
+    course: '',
+    year_section: '',
+    gender: '',
+    email: '',
+    password: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState({ type: '', text: '' });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMsg({ type: '', text: '' });
+
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          full_name: `${formData.first_name} ${formData.last_name}`,
+          gender: formData.gender,
+          course: formData.course,
+          year_section: formData.year_section
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMsg({ type: 'success', text: `Account created successfully! Admin approval is pending. (Email: ${formData.email})` });
+        setFormData({ first_name: '', last_name: '', course: '', year_section: '', gender: '', email: '', password: '' });
+      } else {
+        setMsg({ type: 'error', text: data.message || 'Registration failed' });
+      }
+    } catch (err) {
+      setMsg({ type: 'error', text: 'Server error while registering student.' });
+    }
+    setLoading(false);
+  };
+
+  return (
+    <>
+      <div className="page-header">
+        <h1>Student Profiling</h1>
+        <p>Create a new student account and profile for OJT</p>
+      </div>
+      <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+              <label className="form-label">First Name</label>
+              <input type="text" className="form-input" required value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} />
+            </div>
+            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+              <label className="form-label">Last Name</label>
+              <input type="text" className="form-input" required value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} />
+            </div>
+          </div>
+          
+          <div className="form-group">
+            <label className="form-label">Course</label>
+            <input type="text" className="form-input" required value={formData.course} onChange={e => setFormData({...formData, course: e.target.value})} />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Year and Section</label>
+            <input type="text" className="form-input" required value={formData.year_section} onChange={e => setFormData({...formData, year_section: e.target.value})} placeholder="e.g. 4th Year - Section A" />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Gender</label>
+            <select className="form-input" required value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})}>
+              <option value="">Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+              <label className="form-label">Email</label>
+              <input type="email" className="form-input" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="e.g. jdelacruz@busi.edu.ph" />
+            </div>
+            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+              <label className="form-label">Password</label>
+              <input type="password" className="form-input" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+            </div>
+          </div>
+
+          {msg.text && (
+            <div style={{ 
+              padding: '12px', 
+              borderRadius: '8px', 
+              fontSize: '0.9rem',
+              backgroundColor: msg.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(244, 63, 94, 0.1)',
+              color: msg.type === 'success' ? '#10b981' : '#f43f5e',
+              border: `1px solid ${msg.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(244, 63, 94, 0.3)'}`
+            }}>
+              {msg.text}
+            </div>
+          )}
+
+          <button type="submit" className="btn btn-primary" disabled={loading} style={{ justifyContent: 'center' }}>
+            {loading ? 'Creating...' : 'Create Student Profile'}
+          </button>
+        </form>
+      </div>
+    </>
+  );
+}
+
+function StaffProfileView({ currentUser }) {
+  const [formData, setFormData] = useState({
+    first_name: currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ')[0] : '',
+    last_name: currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ').slice(1).join(' ') : '',
+    email: currentUser?.email || '',
+    password: ''
+  });
+  const [msg, setMsg] = useState({ type: '', text: '' });
+
+  const handleSave = (e) => {
+    e.preventDefault();
+    setMsg({ type: 'success', text: 'Profile updated successfully!' });
+  };
+
+  return (
+    <>
+      <div className="page-header">
+        <h1>My Profile</h1>
+        <p>Manage your account settings</p>
+      </div>
+      <div className="card animate-fade-in-up delay-100" style={{ maxWidth: '600px' }}>
+        <div className="card-header"><div className="card-title">Edit Profile</div></div>
+        {msg.text && (
+          <div style={{ padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.86rem', background: msg.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(244,63,94,0.1)', color: msg.type === 'success' ? 'var(--status-approved)' : 'var(--status-rejected)' }}>
+            {msg.text}
+          </div>
+        )}
+        <form onSubmit={handleSave}>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label">First Name</label>
+              <input type="text" className="form-input" required value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} />
+            </div>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label">Last Name</label>
+              <input type="text" className="form-input" required value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Email Address</label>
+            <input type="email" className="form-input" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Change Password</label>
+            <input type="password" className="form-input" placeholder="Leave blank to keep current password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+          </div>
+          <div style={{ marginTop: '24px' }}>
+            <button type="submit" className="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
       </div>
     </>
   );

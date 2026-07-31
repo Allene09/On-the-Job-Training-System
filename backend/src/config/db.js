@@ -5,15 +5,15 @@
 
 // Initial Static Data Tables
 let users = [
-  { user_id: 1, email: "student@school.edu.ph", password_hash: "pass123", role: "student", status: "active", created_at: "2026-07-01T08:00:00Z" },
-  { user_id: 2, email: "coordinator@school.edu.ph", password_hash: "pass123", role: "staff", status: "active", created_at: "2026-07-01T08:00:00Z" },
-  { user_id: 3, email: "admin@school.edu.ph", password_hash: "pass123", role: "admin", status: "active", created_at: "2026-07-01T08:00:00Z" },
-  { user_id: 4, email: "maria.santos@student.edu.ph", password_hash: "pass123", role: "student", status: "active", created_at: "2026-07-05T09:00:00Z" }
+  { user_id: 1, email: "student@school.edu.ph", password_hash: "pass123", role: "student", status: "active", requires_password_change: false, created_at: "2026-07-01T08:00:00Z" },
+  { user_id: 2, email: "coordinator@school.edu.ph", password_hash: "pass123", role: "staff", status: "active", requires_password_change: false, created_at: "2026-07-01T08:00:00Z" },
+  { user_id: 3, email: "admin@school.edu.ph", password_hash: "pass123", role: "admin", status: "active", requires_password_change: false, created_at: "2026-07-01T08:00:00Z" },
+  { user_id: 4, email: "maria.santos@student.edu.ph", password_hash: "pass123", role: "student", status: "active", requires_password_change: false, created_at: "2026-07-05T09:00:00Z" }
 ];
 
 let students = [
-  { student_id: 1, user_id: 1, student_number: "2022-00123", full_name: "Juan Dela Cruz", course: "BS Information Technology", year_level: "4th Year", contact_number: "+63 917 123 4567", address: "Quezon City, Metro Manila", required_hours: 486, profile_photo: null },
-  { student_id: 2, user_id: 4, student_number: "2022-00456", full_name: "Maria Santos", course: "BS Computer Science", year_level: "4th Year", contact_number: "+63 918 987 6543", address: "Makati City, Metro Manila", required_hours: 486, profile_photo: null }
+  { student_id: 1, user_id: 1, student_number: "2022-00123", full_name: "Juan Dela Cruz", gender: "Male", course: "BS Information Technology", year_level: "4th Year", contact_number: "+63 917 123 4567", address: "Quezon City, Metro Manila", required_hours: 486, profile_photo: null },
+  { student_id: 2, user_id: 4, student_number: "2022-00456", full_name: "Maria Santos", gender: "Female", course: "BS Computer Science", year_level: "4th Year", contact_number: "+63 918 987 6543", address: "Makati City, Metro Manila", required_hours: 486, profile_photo: null }
 ];
 
 let staff = [
@@ -25,9 +25,9 @@ let admins = [
 ];
 
 let companies = [
-  { company_id: 1, company_name: "TechNexus Innovations Inc.", industry: "Software Development", address: "BGC, Taguig City", contact_person: "Sarah Jenkins", contact_number: "+63 2 8888 1234", email: "careers@technexus.ph", slots_available: 5, status: "active", added_by: 3, created_at: "2026-07-01T10:00:00Z" },
-  { company_id: 2, company_name: "CyberShield Solutions", industry: "Cybersecurity & IT Infrastructure", address: "Ortigas Center, Pasig City", contact_person: "Mark Anthony Tan", contact_number: "+63 2 8777 9999", email: "hr@cybershield.com.ph", slots_available: 3, status: "active", added_by: 2, created_at: "2026-07-02T11:30:00Z" },
-  { company_id: 3, company_name: "CloudScale Data Labs", industry: "Data Analytics & Cloud Services", address: "Ayala Ave, Makati City", contact_person: "Elena Gomez", contact_number: "+63 2 8333 4444", email: "recruitment@cloudscale.io", slots_available: 8, status: "active", added_by: 3, created_at: "2026-07-03T14:15:00Z" }
+  { company_id: 1, company_name: "TechNexus Innovations Inc.", industry: "Software Development", address: "BGC, Taguig City", contact_person: "Sarah Jenkins", contact_number: "+63 2 8888 1234", email: "careers@technexus.ph", slots_available: 5, status: "active", photo_url: "/company1.png", requirements: "Resume, Transcript of Records, Portfolio", added_by: 3, created_at: "2026-07-01T10:00:00Z" },
+  { company_id: 2, company_name: "CyberShield Solutions", industry: "Cybersecurity & IT Infrastructure", address: "Ortigas Center, Pasig City", contact_person: "Mark Anthony Tan", contact_number: "+63 2 8777 9999", email: "hr@cybershield.com.ph", slots_available: 3, status: "active", photo_url: "/company2.png", requirements: "Resume, Endorsement Letter", added_by: 2, created_at: "2026-07-02T11:30:00Z" },
+  { company_id: 3, company_name: "CloudScale Data Labs", industry: "Data Analytics & Cloud Services", address: "Ayala Ave, Makati City", contact_person: "Elena Gomez", contact_number: "+63 2 8333 4444", email: "recruitment@cloudscale.io", slots_available: 8, status: "active", photo_url: "/company1.png", requirements: "Resume, Cover Letter, Good standing", added_by: 3, created_at: "2026-07-03T14:15:00Z" }
 ];
 
 let requirement_types = [
@@ -80,16 +80,24 @@ let announcements = [
 
 // --- STORED PROCEDURES SIMULATION ---
 
-const sp_RegisterStudent = (email, password_hash, student_number, full_name, course, year_level) => {
+const sp_RegisterStudent = (email, password_hash, full_name, gender, course, year_section) => {
   const new_user_id = users.length + 1;
-  const newUser = { user_id: new_user_id, email, password_hash, role: "student", status: "pending", created_at: new Date().toISOString() };
+  const newUser = { user_id: new_user_id, email, password_hash, role: "student", status: "pending_admin_approval", requires_password_change: true, created_at: new Date().toISOString() };
   users.push(newUser);
 
   const new_student_id = students.length + 1;
-  const newStudent = { student_id: new_student_id, user_id: new_user_id, student_number, full_name, course, year_level, contact_number: "", address: "", required_hours: 486, profile_photo: null };
+  const newStudent = { student_id: new_student_id, user_id: new_user_id, full_name, gender, course, year_level: year_section, contact_number: "", address: "", required_hours: 486, profile_photo: null };
   students.push(newStudent);
 
   return { user: newUser, student: newStudent };
+};
+
+const sp_ApproveStudentAccount = (user_id) => {
+  const user = users.find(u => u.user_id === parseInt(user_id));
+  if (user) {
+    user.status = 'active';
+  }
+  return user;
 };
 
 const sp_SubmitRequirement = (student_id, requirement_id, file_path) => {
@@ -291,6 +299,7 @@ module.exports = {
     sp_RecordAttendance,
     sp_GetStudentProgress,
     sp_SubmitEvaluation,
-    sp_CheckAndCompletePlacement
+    sp_CheckAndCompletePlacement,
+    sp_ApproveStudentAccount
   }
 };

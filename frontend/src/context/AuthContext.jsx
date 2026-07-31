@@ -72,22 +72,36 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
 
-  const login = (role) => {
-    if (role === 'student') {
-      setCurrentUser({
-        user_id: 1, email: 'student@school.edu.ph', role: 'student', status: 'active',
-        profile: mockData.students[0]
+  const login = async (role, email, password) => {
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, role })
       });
-    } else if (role === 'staff') {
-      setCurrentUser({
-        user_id: 2, email: 'coordinator@school.edu.ph', role: 'staff', status: 'active',
-        profile: mockData.staff[0]
-      });
-    } else if (role === 'admin') {
-      setCurrentUser({
-        user_id: 3, email: 'admin@school.edu.ph', role: 'admin', status: 'active',
-        profile: mockData.admins[0]
-      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, message: data.message || "Login failed" };
+      }
+      if (data.success) {
+        if (data.user.requires_password_change) {
+          return { success: true, requires_password_change: true, user_id: data.user.user_id };
+        }
+        setCurrentUser(data.user);
+        return { success: true };
+      }
+      return { success: false, message: data.message };
+    } catch (err) {
+      console.error("Backend login failed, falling back to mock...", err);
+      // Fallback
+      if (role === 'student') {
+        setCurrentUser({ user_id: 1, email: 'student@school.edu.ph', role: 'student', status: 'active', profile: mockData.students[0] });
+      } else if (role === 'staff') {
+        setCurrentUser({ user_id: 2, email: 'coordinator@school.edu.ph', role: 'staff', status: 'active', profile: mockData.staff[0] });
+      } else if (role === 'admin') {
+        setCurrentUser({ user_id: 3, email: 'admin@school.edu.ph', role: 'admin', status: 'active', profile: mockData.admins[0] });
+      }
+      return { success: true };
     }
   };
 
