@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import API_BASE_URL from '../../config/api';
 import {
   LayoutDashboard, Users, FileCheck, Briefcase, ClipboardList,
-  Star, CheckCircle2, XCircle, AlertCircle, Bell, Clock, TrendingUp, Building2
+  Star, CheckCircle2, XCircle, AlertCircle, Bell, Clock, TrendingUp, Building2, Eye, EyeOff
 } from 'lucide-react';
 
 function StatusBadge({ status }) {
@@ -36,42 +37,113 @@ export default function StaffDashboard({ activePage, currentUser }) {
   const pendingSubmissions = submissions.filter(s => s.status === 'pending');
   const pendingApps = applications.filter(a => a.status === 'pending');
 
-  const reviewRequirement = (submission_id, newStatus) => {
-    setSubmissions(submissions.map(s =>
-      s.submission_id === submission_id
-        ? { ...s, status: newStatus, reviewed_by: 2, reviewed_at: new Date().toISOString(), remarks: newStatus === 'approved' ? 'Verified and approved' : 'Please resubmit with corrections' }
-        : s
-    ));
+  const reviewRequirement = async (submission_id, newStatus) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/staff/requirements/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submission_id,
+          status: newStatus,
+          remarks: newStatus === 'approved' ? 'Verified and approved' : 'Please resubmit with corrections',
+          reviewed_by: currentUser?.user_id || 2
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSubmissions(submissions.map(s =>
+          s.submission_id === submission_id
+            ? { ...s, status: newStatus, reviewed_by: currentUser?.user_id || 2, reviewed_at: new Date().toISOString(), remarks: newStatus === 'approved' ? 'Verified and approved' : 'Please resubmit with corrections' }
+            : s
+        ));
+      } else {
+        alert(data.message || 'Failed to review requirement');
+      }
+    } catch (error) {
+      alert('Server error while reviewing requirement');
+    }
   };
 
-  const approveApplication = (application_id) => {
-    setApplications(applications.map(a =>
-      a.application_id === application_id
-        ? { ...a, status: 'accepted', approved_by: 2, approved_at: new Date().toISOString() }
-        : a
-    ));
+  const approveApplication = async (application_id) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/staff/applications/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          application_id,
+          approved_by: currentUser?.user_id || 2
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setApplications(applications.map(a =>
+          a.application_id === application_id
+            ? { ...a, status: 'accepted', approved_by: currentUser?.user_id || 2, approved_at: new Date().toISOString() }
+            : a
+        ));
+      } else {
+        alert(data.message || 'Failed to approve application');
+      }
+    } catch (error) {
+      alert('Server error while approving application');
+    }
   };
 
-  const rejectApplication = (application_id) => {
-    setApplications(applications.map(a =>
-      a.application_id === application_id ? { ...a, status: 'rejected' } : a
-    ));
+  const rejectApplication = async (application_id) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/staff/applications/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ application_id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setApplications(applications.map(a =>
+          a.application_id === application_id ? { ...a, status: 'rejected' } : a
+        ));
+      } else {
+        alert(data.message || 'Failed to reject application');
+      }
+    } catch (error) {
+      alert('Server error while rejecting application');
+    }
   };
 
-  const submitEvaluation = () => {
-    const total = parseFloat(evalForm.attendance || 0) + parseFloat(evalForm.work || 0) + parseFloat(evalForm.attitude || 0);
-    setEvaluations([...evaluations, {
-      evaluation_id: evaluations.length + 1,
-      placement_id: parseInt(evalForm.placement_id),
-      evaluator_name: evalForm.evaluator_name,
-      attendance_score: parseFloat(evalForm.attendance || 0),
-      work_quality_score: parseFloat(evalForm.work || 0),
-      attitude_score: parseFloat(evalForm.attitude || 0),
-      total_score: parseFloat(total.toFixed(2)),
-      remarks: evalForm.remarks,
-      evaluated_at: new Date().toISOString()
-    }]);
-    setShowEvalModal(false);
+  const submitEvaluation = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/staff/evaluation/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          placement_id: parseInt(evalForm.placement_id),
+          evaluator_name: evalForm.evaluator_name,
+          attendance_score: parseFloat(evalForm.attendance || 0),
+          work_quality_score: parseFloat(evalForm.work || 0),
+          attitude_score: parseFloat(evalForm.attitude || 0),
+          remarks: evalForm.remarks
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const total = parseFloat(evalForm.attendance || 0) + parseFloat(evalForm.work || 0) + parseFloat(evalForm.attitude || 0);
+        setEvaluations([...evaluations, {
+          evaluation_id: evaluations.length + 1,
+          placement_id: parseInt(evalForm.placement_id),
+          evaluator_name: evalForm.evaluator_name,
+          attendance_score: parseFloat(evalForm.attendance || 0),
+          work_quality_score: parseFloat(evalForm.work || 0),
+          attitude_score: parseFloat(evalForm.attitude || 0),
+          total_score: parseFloat(total.toFixed(2)),
+          remarks: evalForm.remarks,
+          evaluated_at: new Date().toISOString()
+        }]);
+        setShowEvalModal(false);
+      } else {
+        alert(data.message || 'Failed to submit evaluation');
+      }
+    } catch (error) {
+      alert('Server error while submitting evaluation');
+    }
   };
 
   const enrichedSubmissions = submissions.map(s => {
@@ -358,6 +430,20 @@ function StudentProfilingView() {
   });
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleNameChange = (field, value) => {
+    const updatedForm = { ...formData, [field]: value };
+    const first = updatedForm.first_name.replace(/[^a-zA-Z]/g, '').toLowerCase();
+    const last = updatedForm.last_name.replace(/[^a-zA-Z]/g, '').toLowerCase();
+    const autoGen = first && last ? `${first}${last}` : '';
+    
+    setFormData({
+      ...updatedForm,
+      email: autoGen ? `${autoGen}@gmail.com` : updatedForm.email,
+      password: autoGen ? `${autoGen}123` : updatedForm.password
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -401,11 +487,11 @@ function StudentProfilingView() {
           <div style={{ display: 'flex', gap: '16px' }}>
             <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
               <label className="form-label">First Name</label>
-              <input type="text" className="form-input" required value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} />
+              <input type="text" className="form-input" required value={formData.first_name} onChange={e => handleNameChange('first_name', e.target.value)} />
             </div>
             <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
               <label className="form-label">Last Name</label>
-              <input type="text" className="form-input" required value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} />
+              <input type="text" className="form-input" required value={formData.last_name} onChange={e => handleNameChange('last_name', e.target.value)} />
             </div>
           </div>
           
@@ -436,7 +522,12 @@ function StudentProfilingView() {
             </div>
             <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
               <label className="form-label">Password</label>
-              <input type="password" className="form-input" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+              <div style={{ position: 'relative' }}>
+                <input type={showPassword ? "text" : "password"} className="form-input" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} style={{ paddingRight: '40px' }} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
           </div>
 

@@ -31,6 +31,9 @@ exports.recordAttendance = async (req, res) => {
     const { placement_id, log_date, time_in, time_out } = req.body;
     await pool.query('CALL sp_RecordAttendance(?, ?, ?, ?)', [placement_id, log_date, time_in, time_out]);
     
+    // Auto-complete placement if hours are met
+    await pool.query('CALL sp_CheckAndCompletePlacement(?)', [placement_id]);
+
     // Fetch the newly inserted record to return
     const [newRecord] = await pool.query('SELECT * FROM attendance WHERE placement_id = ? AND log_date = ? ORDER BY attendance_id DESC LIMIT 1', [placement_id, log_date]);
 

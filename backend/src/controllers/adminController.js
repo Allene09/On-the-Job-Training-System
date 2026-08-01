@@ -2,26 +2,20 @@ const { pool } = require('../config/db');
 
 exports.getAdminStats = async (req, res) => {
   try {
-    const [[{ completed_placements }]] = await pool.query('SELECT COUNT(*) as completed_placements FROM ojt_placements WHERE status = "completed"');
-    const [[{ ongoing_placements }]] = await pool.query('SELECT COUNT(*) as ongoing_placements FROM ojt_placements WHERE status = "ongoing"');
-    const [[{ total_users }]] = await pool.query('SELECT COUNT(*) as total_users FROM users');
-    const [[{ total_students }]] = await pool.query('SELECT COUNT(*) as total_students FROM students');
-    const [[{ total_staff }]] = await pool.query('SELECT COUNT(*) as total_staff FROM staff');
-    const [[{ total_companies }]] = await pool.query('SELECT COUNT(*) as total_companies FROM companies');
-    const [[{ active_companies }]] = await pool.query('SELECT COUNT(*) as active_companies FROM companies WHERE status = "active"');
-    const [[{ total_hours_rendered }]] = await pool.query('SELECT SUM(hours_rendered) as total_hours_rendered FROM attendance');
+    const [rows] = await pool.query('CALL sp_GetAdminDashboardStats()');
+    const stats = rows[0][0];
 
     return res.json({
       success: true,
       data: {
-        total_users,
-        total_students,
-        total_staff,
-        total_companies,
-        active_companies,
-        ongoing_placements,
-        completed_placements,
-        total_hours_rendered: total_hours_rendered || 0
+        total_users: stats.total_users,
+        total_students: stats.total_students,
+        total_staff: stats.total_staff,
+        total_companies: stats.total_companies,
+        active_companies: stats.active_companies,
+        ongoing_placements: stats.ongoing_placements,
+        completed_placements: stats.completed_placements,
+        total_hours_rendered: stats.total_hours_rendered || 0
       }
     });
   } catch (error) {
@@ -32,19 +26,20 @@ exports.getAdminStats = async (req, res) => {
 
 exports.getUsers = async (req, res) => {
   try {
-    const [users] = await pool.query('SELECT user_id, email, role, status, requires_password_change, created_at FROM users');
-    for (let u of users) {
-      if (u.role === 'student') {
-        const [details] = await pool.query('SELECT * FROM students WHERE user_id = ?', [u.user_id]);
-        u.details = details[0];
-      } else if (u.role === 'staff') {
-        const [details] = await pool.query('SELECT * FROM staff WHERE user_id = ?', [u.user_id]);
-        u.details = details[0];
-      } else if (u.role === 'admin') {
-        const [details] = await pool.query('SELECT * FROM admins WHERE user_id = ?', [u.user_id]);
-        u.details = details[0];
+    const [rows] = await pool.query('CALL sp_SearchUsers(NULL, NULL)');
+    const users = rows[0].map(u => ({
+      user_id: u.user_id,
+      email: u.email,
+      role: u.role,
+      status: u.status,
+      requires_password_change: u.requires_password_change,
+      created_at: u.created_at,
+      details: {
+        full_name: u.student_name || u.staff_name || u.admin_name,
+        student_number: u.student_number,
+        employee_id: u.employee_id
       }
-    }
+    }));
     return res.json({ success: true, data: users });
   } catch (error) {
     console.error(error);
@@ -72,11 +67,20 @@ exports.createRequirementType = async (req, res) => {
 
 exports.getPendingAccounts = async (req, res) => {
   try {
-    const [pendingUsers] = await pool.query('SELECT user_id, email, role, status, created_at FROM users WHERE status = "pending_admin_approval"');
-    for (let u of pendingUsers) {
-      const [details] = await pool.query('SELECT * FROM students WHERE user_id = ?', [u.user_id]);
-      u.details = details[0];
-    }
+    const [rows] = await pool.query('CALL sp_GetPendingAccounts()');
+    const pendingUsers = rows[0].map(u => ({
+      user_id: u.user_id,
+      email: u.email,
+      role: u.role,
+      status: u.status,
+      created_at: u.created_at,
+      details: {
+        full_name: u.full_name,
+        student_number: u.student_number,
+        course: u.course,
+        year_level: u.year_level
+      }
+    }));
     return res.json({ success: true, data: pendingUsers });
   } catch (error) {
     console.error(error);

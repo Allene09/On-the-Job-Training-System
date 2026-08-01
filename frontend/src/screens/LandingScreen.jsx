@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import API_BASE_URL from '../config/api';
 import { 
   Building2, GraduationCap, Shield, TrendingUp, 
   FileCheck, Clock, ArrowRight, CheckCircle2,
@@ -43,7 +44,7 @@ export default function LandingScreen({ onGetStarted }) {
   const [appliedIds, setAppliedIds] = useState([]); // track which company IDs the visitor applied to
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/companies')
+    fetch(`${API_BASE_URL}/companies`)
       .then(res => res.json())
       .then(data => {
         if (data?.data) setCompanies(data.data);

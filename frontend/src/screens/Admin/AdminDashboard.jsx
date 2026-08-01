@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import API_BASE_URL from '../../config/api';
 import {
   Users, Building2, FileText, BarChart3, Plus, Settings,
-  TrendingUp, Clock, CheckCircle2, XCircle, Bell, Search, AlertCircle
+  TrendingUp, Clock, CheckCircle2, XCircle, Bell, Search, AlertCircle, Eye, EyeOff
 } from 'lucide-react';
 
 function StatusBadge({ status }) {
@@ -25,7 +26,8 @@ export default function AdminDashboard({ activePage, currentUser }) {
   const [showCompanyModal, setShowCompanyModal] = useState(false);
   const [showReqModal, setShowReqModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
-  const [companyForm, setCompanyForm] = useState({ company_name: '', industry: '', address: '', contact_person: '', contact_number: '', email: '', slots_available: 5 });
+  const [showAddUserPassword, setShowAddUserPassword] = useState(false);
+  const [companyForm, setCompanyForm] = useState({ company_name: '', industry: '', address: '', contact_person: '', contact_number: '', email: '', slots_available: 5, photo_url: '', requirements: '' });
   const [reqForm, setReqForm] = useState({ name: '', description: '', is_required: true, deadline: '' });
   const [userForm, setUserForm] = useState({
     role: 'student',
@@ -40,6 +42,17 @@ export default function AdminDashboard({ activePage, currentUser }) {
   });
   const [userFormError, setUserFormError] = useState('');
 
+  const handleUserFullNameChange = (e) => {
+    const name = e.target.value;
+    const cleanName = name.replace(/[^a-zA-Z]/g, '').toLowerCase();
+    setUserForm({ 
+      ...userForm, 
+      full_name: name,
+      email: cleanName ? `${cleanName}@gmail.com` : '',
+      password: cleanName ? `${cleanName}123` : ''
+    });
+  };
+
   useEffect(() => {
     setCompanies(mockData.companies || []);
     setReqTypes(mockData.requirement_types || []);
@@ -48,23 +61,52 @@ export default function AdminDashboard({ activePage, currentUser }) {
     setStaff(mockData.staff || []);
   }, [mockData.companies, mockData.requirement_types, mockData.users, mockData.students, mockData.staff]);
 
-  const addCompany = () => {
+  const addCompany = async () => {
     if (!companyForm.company_name) return;
-    setCompanies([...companies, { ...companyForm, company_id: companies.length + 1, status: 'active', added_by: 3, created_at: new Date().toISOString(), slots_available: parseInt(companyForm.slots_available) }]);
-    setShowCompanyModal(false);
-    setCompanyForm({ company_name: '', industry: '', address: '', contact_person: '', contact_number: '', email: '', slots_available: 5 });
+    try {
+      const res = await fetch(`${API_BASE_URL}/companies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...companyForm, added_by: currentUser?.user_id || 1 })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCompanies([...companies, { ...companyForm, company_id: data.data.company_id, status: 'active', added_by: currentUser?.user_id || 1, created_at: new Date().toISOString(), slots_available: parseInt(companyForm.slots_available) }]);
+        setShowCompanyModal(false);
+        setCompanyForm({ company_name: '', industry: '', address: '', contact_person: '', contact_number: '', email: '', slots_available: 5, photo_url: '', requirements: '' });
+      } else {
+        alert(data.message || 'Failed to add company');
+      }
+    } catch (error) {
+      alert('Server error while adding company');
+    }
   };
 
-  const addRequirement = () => {
+  const addRequirement = async () => {
     if (!reqForm.name) return;
-    setReqTypes([...reqTypes, { ...reqForm, requirement_id: reqTypes.length + 1, is_required: Boolean(reqForm.is_required) }]);
-    setShowReqModal(false);
-    setReqForm({ name: '', description: '', is_required: true, deadline: '' });
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/requirements/type`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reqForm)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setReqTypes([...reqTypes, data.data]);
+        setShowReqModal(false);
+        setReqForm({ name: '', description: '', is_required: true, deadline: '' });
+      } else {
+        alert(data.message || 'Failed to add requirement');
+      }
+    } catch (error) {
+      alert('Server error while adding requirement');
+    }
   };
 
   const resetUserForm = () => {
     setUserForm({ role: 'student', full_name: '', email: '', password: '', student_number: '', course: '', year_level: '', employee_id: '', department: '' });
     setUserFormError('');
+    setShowAddUserPassword(false);
   };
 
   const addUser = async () => {
@@ -74,7 +116,7 @@ export default function AdminDashboard({ activePage, currentUser }) {
     }
 
     try {
-      const res = await fetch('http://localhost:5000/api/admin/users', {
+      const res = await fetch(`${API_BASE_URL}/admin/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userForm)
@@ -148,6 +190,8 @@ export default function AdminDashboard({ activePage, currentUser }) {
               <div className="form-group"><label className="form-label">Slots Available</label><input type="number" className="form-input" value={companyForm.slots_available} min="1" onChange={e => setCompanyForm({ ...companyForm, slots_available: e.target.value })} /></div>
             </div>
             <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" value={companyForm.email} onChange={e => setCompanyForm({ ...companyForm, email: e.target.value })} /></div>
+            <div className="form-group"><label className="form-label">Photo URL</label><input type="text" className="form-input" placeholder="https://example.com/logo.png" value={companyForm.photo_url} onChange={e => setCompanyForm({ ...companyForm, photo_url: e.target.value })} /></div>
+            <div className="form-group"><label className="form-label">Requirements</label><textarea className="form-input" placeholder="e.g. Resume, Transcript, Cover Letter" value={companyForm.requirements} onChange={e => setCompanyForm({ ...companyForm, requirements: e.target.value })} style={{ minHeight: '60px' }} /></div>
             <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={addCompany}><Plus size={16} /> Add Company</button>
           </div>
         </div>
@@ -201,7 +245,7 @@ export default function AdminDashboard({ activePage, currentUser }) {
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Full Name</label>
-                <input className="form-input" value={userForm.full_name} onChange={e => setUserForm({ ...userForm, full_name: e.target.value })} />
+                <input className="form-input" value={userForm.full_name} onChange={handleUserFullNameChange} />
               </div>
               <div className="form-group">
                 <label className="form-label">Email</label>
@@ -211,7 +255,12 @@ export default function AdminDashboard({ activePage, currentUser }) {
 
             <div className="form-group">
               <label className="form-label">Temporary Password</label>
-              <input type="password" className="form-input" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} />
+              <div style={{ position: 'relative' }}>
+                <input type={showAddUserPassword ? "text" : "password"} className="form-input" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} style={{ paddingRight: '40px' }} />
+                <button type="button" onClick={() => setShowAddUserPassword(!showAddUserPassword)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                  {showAddUserPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             {userForm.role === 'student' ? (
@@ -369,7 +418,25 @@ function ManageUsersView({ users, students, staff, admins, onAdd }) {
 
 function ManageCompaniesView({ companies, onAdd, setCompanies }) {
   const [search, setSearch] = useState('');
-  const deactivate = (id) => setCompanies(companies.map(c => c.company_id === id ? { ...c, status: c.status === 'active' ? 'inactive' : 'active' } : c));
+  const deactivate = async (id) => {
+    const company = companies.find(c => c.company_id === id);
+    const newStatus = company?.status === 'active' ? 'inactive' : 'active';
+    try {
+      const res = await fetch(`${API_BASE_URL}/companies/${id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCompanies(companies.map(c => c.company_id === id ? { ...c, status: newStatus } : c));
+      } else {
+        alert(data.message || 'Failed to update company status');
+      }
+    } catch (error) {
+      alert('Server error while updating company status');
+    }
+  };
 
   const filtered = companies.filter(c =>
     c.company_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -416,7 +483,7 @@ function ManageCompaniesView({ companies, onAdd, setCompanies }) {
       <div className="card">
         <div className="table-wrapper">
           <table>
-            <thead><tr><th>Company</th><th>Industry</th><th>Contact / Requirements</th><th>Slots Needed</th><th>Status</th><th>Action</th></tr></thead>
+            <thead><tr><th>Company</th><th>Industry & Address</th><th>Contact & Requirements</th><th>Slots Needed</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
               {filtered.map(c => {
                 const isFull = c.slots_available === 0;
@@ -435,9 +502,12 @@ function ManageCompaniesView({ companies, onAdd, setCompanies }) {
                         </div>
                       </div>
                     </td>
-                    <td style={{ color: 'var(--text-muted)' }}>{c.industry}</td>
                     <td>
-                      <div>{c.contact_person}</div>
+                      <div style={{ color: 'var(--text-primary)' }}>{c.industry || '—'}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.address || '—'}</div>
+                    </td>
+                    <td>
+                      <div>{c.contact_person || '—'} {c.contact_number ? `(${c.contact_number})` : ''}</div>
                       {c.requirements && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Reqs: {c.requirements}</div>}
                     </td>
                     <td>
@@ -471,7 +541,25 @@ function ManageCompaniesView({ companies, onAdd, setCompanies }) {
 }
 
 function ManageRequirementsView({ reqTypes, onAdd, setReqTypes }) {
-  const toggle = (id) => setReqTypes(reqTypes.map(r => r.requirement_id === id ? { ...r, is_required: !r.is_required } : r));
+  const toggle = async (id) => {
+    const req = reqTypes.find(r => r.requirement_id === id);
+    const newIsRequired = !req?.is_required;
+    try {
+      const res = await fetch(`${API_BASE_URL}/requirements/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_required: newIsRequired })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setReqTypes(reqTypes.map(r => r.requirement_id === id ? { ...r, is_required: newIsRequired } : r));
+      } else {
+        alert(data.message || 'Failed to toggle requirement');
+      }
+    } catch (error) {
+      alert('Server error while toggling requirement');
+    }
+  };
   return (
     <>
       <div className="page-header">
@@ -557,7 +645,7 @@ function PendingAccountsView() {
   const fetchPendingAccounts = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/admin/pending-accounts');
+      const res = await fetch(`${API_BASE_URL}/admin/pending-accounts`);
       const data = await res.json();
       if (data.success) {
         setPendingAccounts(data.data);
@@ -568,14 +656,14 @@ function PendingAccountsView() {
     setLoading(false);
   };
 
-  useState(() => {
+  useEffect(() => {
     fetchPendingAccounts();
   }, []);
 
   const handleApprove = async (user_id) => {
     if (!window.confirm("Approve this account? An email will be sent to the user with their temporary password.")) return;
     try {
-      const res = await fetch('http://localhost:5000/api/admin/approve-account', {
+      const res = await fetch(`${API_BASE_URL}/admin/approve-account`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id })
@@ -611,8 +699,9 @@ function PendingAccountsView() {
                 <tr>
                   <th>Full Name</th>
                   <th>Email</th>
-                  <th>Student Number</th>
-                  <th>Course / Year</th>
+                  <th>Student No.</th>
+                  <th>Gender</th>
+                  <th>Course/Year</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
@@ -623,6 +712,7 @@ function PendingAccountsView() {
                     <td style={{ fontWeight: 600 }}>{u.details?.full_name || 'N/A'}</td>
                     <td style={{ color: 'var(--text-accent)' }}>{u.email}</td>
                     <td style={{ color: 'var(--text-muted)' }}>{u.details?.student_number || 'N/A'}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{u.details?.gender || 'N/A'}</td>
                     <td style={{ color: 'var(--text-muted)' }}>{u.details?.course} - {u.details?.year_level}</td>
                     <td><StatusBadge status="pending" /></td>
                     <td>
@@ -663,7 +753,7 @@ function AdminProfileView({ currentUser }) {
   const handleSave = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/auth/profile', {
+      const res = await fetch(`${API_BASE_URL}/auth/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

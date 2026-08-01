@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import API_BASE_URL from '../config/api';
 
 const AuthContext = createContext(null);
 
@@ -35,17 +36,17 @@ export const AuthProvider = ({ children }) => {
       try {
         const studentId = currentUser?.profile?.student_id;
         const [companiesRes, requirementTypesRes, submissionsRes, applicationsRes, usersRes] = await Promise.all([
-          fetch('http://localhost:5000/api/companies'),
-          fetch('http://localhost:5000/api/requirements/types'),
-          fetch('http://localhost:5000/api/requirements/submissions'),
-          fetch('http://localhost:5000/api/applications'),
-          fetch('http://localhost:5000/api/admin/users')
+          fetch(`${API_BASE_URL}/companies`),
+          fetch(`${API_BASE_URL}/requirements/types`),
+          fetch(`${API_BASE_URL}/requirements/submissions`),
+          fetch(`${API_BASE_URL}/applications`),
+          fetch(`${API_BASE_URL}/admin/users`)
         ]);
 
         const [announcementsRes, notificationsRes, weeklyReportsRes] = await Promise.all([
-          fetch('http://localhost:5000/api/admin/announcements'),
-          fetch(`http://localhost:5000/api/admin/notifications?user_id=${currentUser.user_id}`),
-          studentId ? fetch(`http://localhost:5000/api/student/weekly-reports?student_id=${studentId}`) : Promise.resolve({ ok: true, json: async () => ({ data: [] }) })
+          fetch(`${API_BASE_URL}/admin/announcements`),
+          fetch(`${API_BASE_URL}/admin/notifications?user_id=${currentUser.user_id}`),
+          studentId ? fetch(`${API_BASE_URL}/student/weekly-reports?student_id=${studentId}`) : Promise.resolve({ ok: true, json: async () => ({ data: [] }) })
         ]);
 
         const companiesData = companiesRes.ok ? await companiesRes.json() : { data: [] };
@@ -84,7 +85,7 @@ export const AuthProvider = ({ children }) => {
           students
             .filter(student => student.student_id)
             .map(async student => {
-              const res = await fetch(`http://localhost:5000/api/student/placements?student_id=${student.student_id}`);
+              const res = await fetch(`${API_BASE_URL}/student/placements?student_id=${student.student_id}`);
               if (!res.ok) return [];
               const payload = await res.json();
               return Array.isArray(payload.data) ? payload.data : [];
@@ -97,7 +98,7 @@ export const AuthProvider = ({ children }) => {
         const [attendanceCollections, evaluationCollections] = await Promise.all([
           Promise.all(
             placementIds.map(async placementId => {
-              const res = await fetch(`http://localhost:5000/api/attendance/${placementId}`);
+              const res = await fetch(`${API_BASE_URL}/attendance/${placementId}`);
               if (!res.ok) return [];
               const payload = await res.json();
               return Array.isArray(payload.data?.records) ? payload.data.records : [];
@@ -105,7 +106,7 @@ export const AuthProvider = ({ children }) => {
           ),
           Promise.all(
             placementIds.map(async placementId => {
-              const res = await fetch(`http://localhost:5000/api/evaluations/${placementId}`);
+              const res = await fetch(`${API_BASE_URL}/evaluations/${placementId}`);
               if (!res.ok) return [];
               const payload = await res.json();
               return Array.isArray(payload.data) ? payload.data : [];
@@ -147,7 +148,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (role, email, password) => {
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, role })

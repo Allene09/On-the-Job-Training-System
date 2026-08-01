@@ -159,7 +159,7 @@ function AppShell() {
           </div>
 
           <div className="topbar-actions">
-            <button className="notif-btn" title="Notifications">
+            <button className="notif-btn" title="Notifications" onClick={() => setActivePage('dashboard')}>
               <Bell size={18} />
               <span className="notif-badge" />
             </button>

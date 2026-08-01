@@ -4,24 +4,21 @@ exports.getDashboardData = async (req, res) => {
   try {
     const student_id = req.user?.profile?.student_id || 1; // Fallback for testing
 
-    const [requirements] = await pool.query(`
-      SELECT sr.*, rt.name as requirement_name, rt.is_required
-      FROM student_requirements sr
-      JOIN requirement_types rt ON sr.requirement_id = rt.requirement_id
-      WHERE sr.student_id = ?
-    `, [student_id]);
+    const [rows] = await pool.query('CALL sp_GetStudentRequirements(?)', [student_id]);
+    const requirements = rows[0];
 
-    const [placements] = await pool.query('SELECT * FROM ojt_placements WHERE student_id = ? AND status != "terminated" ORDER BY placement_id DESC LIMIT 1', [student_id]);
+    const [placementRows] = await pool.query('CALL sp_GetActivePlacementByStudentId(?)', [student_id]);
+    const placements = placementRows[0];
     let placement = null;
     let attendance = [];
     let recent_evaluations = [];
 
     if (placements.length > 0) {
       placement = placements[0];
-      const [att] = await pool.query('SELECT * FROM attendance WHERE placement_id = ? ORDER BY log_date DESC LIMIT 5', [placement.placement_id]);
-      attendance = att;
-      const [evals] = await pool.query('SELECT * FROM evaluations WHERE placement_id = ? ORDER BY evaluated_at DESC LIMIT 5', [placement.placement_id]);
-      recent_evaluations = evals;
+      const [attRows] = await pool.query('CALL sp_GetRecentAttendance(?)', [placement.placement_id]);
+      attendance = attRows[0];
+      const [evalsRows] = await pool.query('CALL sp_GetRecentEvaluations(?)', [placement.placement_id]);
+      recent_evaluations = evalsRows[0];
     }
 
     res.json({
@@ -42,12 +39,8 @@ exports.getDashboardData = async (req, res) => {
 exports.getRequirements = async (req, res) => {
   try {
     const student_id = req.user?.profile?.student_id || req.query.student_id || 1;
-    const [requirements] = await pool.query(`
-      SELECT rt.requirement_id, rt.name, rt.description, rt.is_required, rt.deadline,
-             sr.submission_id, sr.file_path, sr.status, sr.remarks, sr.submitted_at
-      FROM requirement_types rt
-      LEFT JOIN student_requirements sr ON rt.requirement_id = sr.requirement_id AND sr.student_id = ?
-    `, [student_id]);
+    const [rows] = await pool.query('CALL sp_GetStudentRequirements(?)', [student_id]);
+    const requirements = rows[0];
     
     // Map to expected structure
     const fullList = requirements.map(r => ({
@@ -75,7 +68,8 @@ exports.getRequirements = async (req, res) => {
 exports.getPlacements = async (req, res) => {
   try {
     const student_id = req.user?.profile?.student_id || req.query.student_id || 1;
-    const [placements] = await pool.query('SELECT p.*, c.company_name FROM ojt_placements p JOIN companies c ON p.company_id = c.company_id WHERE p.student_id = ?', [student_id]);
+    const [rows] = await pool.query('CALL sp_GetStudentPlacements(?)', [student_id]);
+    const placements = rows[0];
     
     const enriched = placements.map(p => ({
       ...p,
@@ -107,7 +101,8 @@ exports.submitRequirement = async (req, res) => {
 exports.applyToCompany = async (req, res) => {
   try {
     const { student_id, company_id } = req.body;
-    const [existing] = await pool.query('SELECT * FROM applications WHERE student_id = ? AND company_id = ?', [student_id, company_id]);
+    const [rows] = await pool.query('CALL sp_CheckExistingApplication(?)', [student_id, company_id]);
+    const existing = rows[0];
     if (existing.length > 0) {
       return res.status(400).json({ success: false, message: "Application already exists for this company" });
     }
@@ -122,10 +117,11 @@ exports.applyToCompany = async (req, res) => {
 exports.submitWeeklyReport = async (req, res) => {
   try {
     const { placement_id, week_number, narrative } = req.body;
-    const [result] = await pool.query(
-      'INSERT INTO weekly_reports (placement_id, week_number, narrative, status) VALUES (?, ?, ?, ?)',
-      [placement_id, week_number, narrative, 'submitted']
+    const [rows] = await pool.query(
+      'CALL sp_SubmitWeeklyReport(?, ?, ?)',
+      [placement_id, week_number, narrative]
     );
+    const result = rows[0][0];
     return res.status(201).json({ success: true, message: "Weekly report submitted", data: { report_id: result.insertId } });
   } catch (error) {
     console.error(error);
@@ -136,21 +132,8 @@ exports.submitWeeklyReport = async (req, res) => {
 exports.getWeeklyReports = async (req, res) => {
   try {
     const { student_id } = req.query;
-    const params = [];
-    let query = `
-      SELECT wr.*
-      FROM weekly_reports wr
-      JOIN ojt_placements p ON wr.placement_id = p.placement_id
-    `;
-
-    if (student_id) {
-      query += ' WHERE p.student_id = ?';
-      params.push(student_id);
-    }
-
-    query += ' ORDER BY wr.submitted_at DESC';
-
-    const [reports] = await pool.query(query, params);
+    const [rows] = await pool.query('CALL sp_GetWeeklyReportsByStudentId(?)', [student_id || null]);
+    const reports = rows[0];
     return res.json({ success: true, data: reports });
   } catch (error) {
     console.error(error);

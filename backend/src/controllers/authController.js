@@ -3,37 +3,23 @@ const { pool } = require('../config/db');
 exports.login = async (req, res) => {
   try {
     const { email, password, role } = req.body;
-    let query = 'SELECT * FROM users WHERE email = ?';
-    const params = [email];
-    
-    if (role) {
-      query += ' AND role = ?';
-      params.push(role);
-    }
+    const [userRows] = await pool.query('CALL sp_SearchUsers(?, NULL)', [role || '']);
+    const users = userRows[0];
+    const userMatch = users.find(u => u.email === email);
 
-    const [users] = await pool.query(query, params);
-    if (users.length === 0) {
+    if (!userMatch) {
       return res.status(401).json({ success: false, message: "Invalid email or role" });
     }
 
-    const user = users[0];
+    const user = userMatch;
     
     // In a real app, compare password_hash with bcrypt
     if (user.password_hash !== password) {
       return res.status(401).json({ success: false, message: "Invalid password" });
     }
 
-    let profile = null;
-    if (user.role === 'student') {
-      const [students] = await pool.query('SELECT * FROM students WHERE user_id = ?', [user.user_id]);
-      profile = students[0];
-    } else if (user.role === 'staff') {
-      const [staff] = await pool.query('SELECT * FROM staff WHERE user_id = ?', [user.user_id]);
-      profile = staff[0];
-    } else if (user.role === 'admin') {
-      const [admins] = await pool.query('SELECT * FROM admins WHERE user_id = ?', [user.user_id]);
-      profile = admins[0];
-    }
+    const [detailsRows] = await pool.query('CALL sp_GetUserDetails(?, ?)', [user.user_id, user.role]);
+    const profile = detailsRows[0][0] || null;
 
     if (user.status === 'pending_admin_approval') {
       return res.status(403).json({ success: false, message: "Account is pending administrator approval." });
@@ -61,7 +47,8 @@ exports.login = async (req, res) => {
 exports.registerStudent = async (req, res) => {
   try {
     const { email, password, full_name, gender, course, year_section, year_level } = req.body;
-    const [existing] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    const [existingRows] = await pool.query('CALL sp_GetUserByEmail(?)', [email]);
+    const existing = existingRows[0];
     
     if (existing.length > 0) {
       return res.status(400).json({ success: false, message: "Email already registered" });
@@ -94,8 +81,8 @@ exports.changePassword = async (req, res) => {
   try {
     const { user_id, new_password } = req.body;
     const [result] = await pool.query(
-      'UPDATE users SET password_hash = ?, requires_password_change = 0 WHERE user_id = ?',
-      [new_password, user_id]
+      'CALL sp_ChangeUserPassword(?, ?)',
+      [user_id, new_password]
     );
 
     if (result.affectedRows === 0) {
@@ -146,23 +133,11 @@ exports.updateProfile = async (req, res) => {
       ]
     );
 
-    let profile = null;
-    if (role === 'student') {
-      const [students] = await pool.query('SELECT * FROM students WHERE user_id = ?', [user_id]);
-      profile = students[0] || null;
-    } else if (role === 'staff') {
-      const [staff] = await pool.query('SELECT * FROM staff WHERE user_id = ?', [user_id]);
-      profile = staff[0] || null;
-    } else if (role === 'admin') {
-      const [admins] = await pool.query('SELECT * FROM admins WHERE user_id = ?', [user_id]);
-      profile = admins[0] || null;
-    }
+    const [detailsRows] = await pool.query('CALL sp_GetUserDetails(?, ?)', [user_id, role]);
+    const profile = detailsRows[0][0] || null;
 
-    const [users] = await pool.query(
-      'SELECT user_id, email, role, status, requires_password_change, created_at FROM users WHERE user_id = ?',
-      [user_id]
-    );
-    const user = users[0] || { user_id, email, role, status: 'active', requires_password_change: false };
+    const [userRows] = await pool.query('CALL sp_GetUserByEmail(?)', [email]);
+    const user = userRows[0][0] || { user_id, email, role, status: 'active', requires_password_change: false };
 
     return res.json({
       success: true,

@@ -2,9 +2,9 @@ const { pool } = require('../config/db');
 
 exports.getDashboardData = async (req, res) => {
   try {
-    const [[{ total_students }]] = await pool.query('SELECT COUNT(*) as total_students FROM students');
-    const [[{ active_placements }]] = await pool.query('SELECT COUNT(*) as active_placements FROM ojt_placements WHERE status = "ongoing"');
-    const [[{ pending_requirements }]] = await pool.query('SELECT COUNT(*) as pending_requirements FROM student_requirements WHERE status = "pending"');
+    const [rows] = await pool.query('CALL sp_GetStaffDashboardStats()');
+    const stats = rows[0][0];
+    const { total_students, active_placements, pending_requirements } = stats;
     
     res.json({
       success: true,
@@ -22,14 +22,8 @@ exports.getDashboardData = async (req, res) => {
 
 exports.getStudentProfiles = async (req, res) => {
   try {
-    const [students] = await pool.query(`
-      SELECT s.*, u.email, u.status as account_status,
-             p.placement_id as active_placement_id,
-             p.status as active_placement_status
-      FROM students s
-      LEFT JOIN users u ON s.user_id = u.user_id
-      LEFT JOIN ojt_placements p ON s.student_id = p.student_id AND p.status = 'ongoing'
-    `);
+    const [rows] = await pool.query('CALL sp_GetStaffStudents()');
+    const students = rows[0];
     
     const enriched = students.map(s => ({
       ...s,
@@ -48,13 +42,8 @@ exports.getStudentProfiles = async (req, res) => {
 
 exports.getPendingRequirements = async (req, res) => {
   try {
-    const [pending] = await pool.query(`
-      SELECT sr.*, s.full_name as student_name, rt.name as requirement_name 
-      FROM student_requirements sr
-      JOIN students s ON sr.student_id = s.student_id
-      JOIN requirement_types rt ON sr.requirement_id = rt.requirement_id
-      WHERE sr.status = 'pending'
-    `);
+    const [rows] = await pool.query('CALL sp_GetPendingRequirements()');
+    const pending = rows[0];
     res.json({ success: true, data: pending });
   } catch (error) {
     console.error(error);
@@ -93,6 +82,17 @@ exports.submitEvaluation = async (req, res) => {
     const { placement_id, evaluator_name, attendance_score, work_quality_score, attitude_score, remarks } = req.body;
     await pool.query('CALL sp_SubmitEvaluation(?, ?, ?, ?, ?, ?)', [placement_id, evaluator_name, attendance_score, work_quality_score, attitude_score, remarks]);
     return res.status(201).json({ success: true, message: "Evaluation saved successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.rejectApplication = async (req, res) => {
+  try {
+    const { application_id } = req.body;
+    await pool.query('CALL sp_RejectApplication(?)', [application_id]);
+    return res.json({ success: true, message: 'Application rejected' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Server error' });

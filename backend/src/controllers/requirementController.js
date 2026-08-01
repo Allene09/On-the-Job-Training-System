@@ -24,3 +24,15 @@ exports.getStudentSubmissions = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+exports.updateRequirement = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_required } = req.body;
+    await pool.query('UPDATE requirement_types SET is_required = ? WHERE requirement_id = ?', [is_required ? 1 : 0, id]);
+    return res.json({ success: true, message: 'Requirement updated successfully' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

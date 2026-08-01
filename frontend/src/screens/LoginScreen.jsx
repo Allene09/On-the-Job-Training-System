@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import API_BASE_URL from '../config/api';
 import {
   GraduationCap, Shield, UserCog, Eye, EyeOff, BookOpen, ArrowLeft
 } from 'lucide-react';
@@ -50,7 +51,7 @@ export default function LoginScreen({ onBack }) {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/auth/change-password', {
+      const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: changeUserId, new_password: newPassword })

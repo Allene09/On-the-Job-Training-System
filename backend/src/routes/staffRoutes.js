@@ -7,6 +7,7 @@ router.get('/students', staffController.getStudentProfiles);
 router.get('/requirements/pending', staffController.getPendingRequirements);
 router.post('/requirements/review', staffController.reviewRequirement);
 router.post('/applications/approve', staffController.approveApplication);
+router.post('/applications/reject', staffController.rejectApplication);
 router.post('/evaluation/submit', staffController.submitEvaluation);
 
 module.exports = router;

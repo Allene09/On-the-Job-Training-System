@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import API_BASE_URL from '../../config/api';
 import {
   LayoutDashboard, FileText, Building2, Clock, BookOpen,
   TrendingUp, Bell, Star, CheckCircle2, XCircle, AlertCircle,
@@ -80,70 +81,122 @@ export default function StudentDashboard({ activePage, setActivePage }) {
     .reduce((sum, a) => sum + (a.hours_rendered || 0), 0);
   const hoursRendered = parseFloat(totalHours.toFixed(2));
 
-  const logDTR = () => {
-    if (!dtrForm.date || !dtrForm.time_in || !dtrForm.time_out) return;
-    const inMins = dtrForm.time_in.split(':').map(Number).reduce((h, m, i) => i === 0 ? h + m * 60 : h + m, 0);
-    const outMins = dtrForm.time_out.split(':').map(Number).reduce((h, m, i) => i === 0 ? h + m * 60 : h + m, 0);
-    const hrs = parseFloat(((outMins - inMins) / 60).toFixed(2));
-    const newRecord = {
-      attendance_id: attendance.length + 1,
-      placement_id: placement.placement_id,
-      log_date: dtrForm.date,
-      time_in: dtrForm.time_in,
-      time_out: dtrForm.time_out,
-      hours_rendered: hrs,
-      status: 'present',
-      remarks: 'DTR logged'
-    };
-    setAttendance([...attendance, newRecord]);
-    setShowDTRModal(false);
-    setDtrForm({ date: '', time_in: '08:00', time_out: '17:00' });
+  const logDTR = async () => {
+    if (!dtrForm.date || !dtrForm.time_in || !dtrForm.time_out || !placement) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/attendance/record`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          placement_id: placement.placement_id,
+          log_date: dtrForm.date,
+          time_in: dtrForm.time_in,
+          time_out: dtrForm.time_out
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAttendance([...attendance, data.data]);
+        setShowDTRModal(false);
+        setDtrForm({ date: '', time_in: '08:00', time_out: '17:00' });
+      } else {
+        alert(data.message || 'Failed to log DTR');
+      }
+    } catch (error) {
+      alert('Server error while logging DTR');
+    }
   };
 
-  const submitReport = () => {
-    if (!reportForm.week || !reportForm.narrative) return;
-    const newRpt = {
-      report_id: reports.length + 1,
-      placement_id: placement.placement_id,
-      week_number: parseInt(reportForm.week),
-      narrative: reportForm.narrative,
-      status: 'submitted',
-      submitted_at: new Date().toISOString(),
-      reviewed_by: null
-    };
-    setReports([...reports, newRpt]);
-    setShowReportModal(false);
-    setReportForm({ week: '', narrative: '' });
+  const submitReport = async () => {
+    if (!reportForm.week || !reportForm.narrative || !placement) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/student/weekly-report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          placement_id: placement.placement_id,
+          week_number: parseInt(reportForm.week),
+          narrative: reportForm.narrative
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setReports([...reports, {
+          report_id: data.data?.report_id || reports.length + 1,
+          placement_id: placement.placement_id,
+          week_number: parseInt(reportForm.week),
+          narrative: reportForm.narrative,
+          status: 'submitted',
+          submitted_at: new Date().toISOString(),
+          reviewed_by: null
+        }]);
+        setShowReportModal(false);
+        setReportForm({ week: '', narrative: '' });
+      } else {
+        alert(data.message || 'Failed to submit report');
+      }
+    } catch (error) {
+      alert('Server error while submitting report');
+    }
   };
 
-  const applyCompany = (company_id) => {
+  const applyCompany = async (company_id) => {
     const exists = applications.find(a => a.student_id === student?.student_id && a.company_id === company_id);
     if (exists) return;
-    setApplications([...applications, {
-      application_id: applications.length + 1,
-      student_id: student?.student_id,
-      company_id,
-      status: 'pending',
-      applied_at: new Date().toISOString(),
-      approved_by: null,
-      approved_at: null
-    }]);
+    try {
+      const res = await fetch(`${API_BASE_URL}/student/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: student?.student_id, company_id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setApplications([...applications, {
+          application_id: applications.length + 1,
+          student_id: student?.student_id,
+          company_id,
+          status: 'pending',
+          applied_at: new Date().toISOString(),
+          approved_by: null,
+          approved_at: null
+        }]);
+      } else {
+        alert(data.message || 'Failed to apply');
+      }
+    } catch (error) {
+      alert('Server error while applying to company');
+    }
   };
 
-  const submitRequirement = (req_id) => {
+  const submitRequirement = async (req_id) => {
     const exists = requirements.find(r => r.student_id === student?.student_id && r.requirement_id === req_id);
     if (exists) return;
-    setRequirements([...requirements, {
-      submission_id: requirements.length + 1,
-      student_id: student?.student_id,
-      requirement_id: req_id,
-      file_path: `/uploads/doc_${Date.now()}.pdf`,
-      status: 'pending',
-      remarks: null,
-      reviewed_by: null,
-      submitted_at: new Date().toISOString(),
-      reviewed_at: null
-    }]);
+    const file_path = `/uploads/doc_${Date.now()}.pdf`;
+    try {
+      const res = await fetch(`${API_BASE_URL}/student/requirements/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: student?.student_id, requirement_id: req_id, file_path })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setRequirements([...requirements, {
+          submission_id: requirements.length + 1,
+          student_id: student?.student_id,
+          requirement_id: req_id,
+          file_path,
+          status: 'pending',
+          remarks: null,
+          reviewed_by: null,
+          submitted_at: new Date().toISOString(),
+          reviewed_at: null
+        }]);
+      } else {
+        alert(data.message || 'Failed to submit requirement');
+      }
+    } catch (error) {
+      alert('Server error while submitting requirement');
+    }
   };
 
   const pages = {
