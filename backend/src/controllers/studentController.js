@@ -92,7 +92,11 @@ exports.getPlacements = async (req, res) => {
 exports.submitRequirement = async (req, res) => {
   try {
     const { student_id, requirement_id, file_path } = req.body;
-    await pool.query('CALL sp_SubmitRequirement(?, ?, ?)', [student_id, requirement_id, file_path || "/uploads/sample_doc.pdf"]);
+    if (!file_path) {
+      return res.status(400).json({ success: false, message: 'file_path is required' });
+    }
+
+    await pool.query('CALL sp_SubmitRequirement(?, ?, ?)', [student_id, requirement_id, file_path]);
     return res.status(201).json({ success: true, message: "Requirement submitted successfully" });
   } catch (error) {
     console.error(error);
@@ -126,5 +130,30 @@ exports.submitWeeklyReport = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.getWeeklyReports = async (req, res) => {
+  try {
+    const { student_id } = req.query;
+    const params = [];
+    let query = `
+      SELECT wr.*
+      FROM weekly_reports wr
+      JOIN ojt_placements p ON wr.placement_id = p.placement_id
+    `;
+
+    if (student_id) {
+      query += ' WHERE p.student_id = ?';
+      params.push(student_id);
+    }
+
+    query += ' ORDER BY wr.submitted_at DESC';
+
+    const [reports] = await pool.query(query, params);
+    return res.json({ success: true, data: reports });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };

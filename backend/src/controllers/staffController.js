@@ -66,7 +66,7 @@ exports.reviewRequirement = async (req, res) => {
   try {
     const { submission_id, status, remarks, reviewed_by } = req.body;
     await pool.query('CALL sp_ReviewRequirement(?, ?, ?, ?)', [submission_id, status, remarks, reviewed_by || 2]);
-    return res.json({ success: true, message: \`Requirement \${status}\` });
+    return res.json({ success: true, message: `Requirement ${status}` });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Server error' });

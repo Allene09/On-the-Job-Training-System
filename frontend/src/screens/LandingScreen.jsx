@@ -43,19 +43,13 @@ export default function LandingScreen({ onGetStarted }) {
   const [appliedIds, setAppliedIds] = useState([]); // track which company IDs the visitor applied to
 
   useEffect(() => {
-    // Try to fetch from backend; fall back to mock data if unavailable
     fetch('http://localhost:5000/api/companies')
       .then(res => res.json())
       .then(data => {
         if (data?.data) setCompanies(data.data);
       })
       .catch(() => {
-        // Fallback mock data mirroring db.js
-        setCompanies([
-          { company_id: 1, company_name: 'TechNexus Innovations Inc.', industry: 'Software Development',             address: 'BGC, Taguig City',          contact_person: 'Sarah Jenkins',     slots_available: 5, status: 'active' },
-          { company_id: 2, company_name: 'CyberShield Solutions',      industry: 'Cybersecurity & IT Infrastructure', address: 'Ortigas Center, Pasig City', contact_person: 'Mark Anthony Tan', slots_available: 3, status: 'active' },
-          { company_id: 3, company_name: 'CloudScale Data Labs',       industry: 'Data Analytics & Cloud Services',  address: 'Ayala Ave, Makati City',     contact_person: 'Elena Gomez',      slots_available: 8, status: 'active' },
-        ]);
+        setCompanies([]);
       });
   }, []);
 

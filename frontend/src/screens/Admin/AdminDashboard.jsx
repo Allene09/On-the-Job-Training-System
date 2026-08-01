@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   Users, Building2, FileText, BarChart3, Plus, Settings,
@@ -17,12 +17,36 @@ function StatusBadge({ status }) {
 
 export default function AdminDashboard({ activePage, currentUser }) {
   const { mockData } = useAuth();
-  const [companies, setCompanies] = useState([...mockData.companies]);
-  const [reqTypes, setReqTypes] = useState([...mockData.requirement_types]);
+  const [companies, setCompanies] = useState([]);
+  const [reqTypes, setReqTypes] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [staff, setStaff] = useState([]);
   const [showCompanyModal, setShowCompanyModal] = useState(false);
   const [showReqModal, setShowReqModal] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
   const [companyForm, setCompanyForm] = useState({ company_name: '', industry: '', address: '', contact_person: '', contact_number: '', email: '', slots_available: 5 });
   const [reqForm, setReqForm] = useState({ name: '', description: '', is_required: true, deadline: '' });
+  const [userForm, setUserForm] = useState({
+    role: 'student',
+    full_name: '',
+    email: '',
+    password: '',
+    student_number: '',
+    course: '',
+    year_level: '',
+    employee_id: '',
+    department: ''
+  });
+  const [userFormError, setUserFormError] = useState('');
+
+  useEffect(() => {
+    setCompanies(mockData.companies || []);
+    setReqTypes(mockData.requirement_types || []);
+    setUsers(mockData.users || []);
+    setStudents(mockData.students || []);
+    setStaff(mockData.staff || []);
+  }, [mockData.companies, mockData.requirement_types, mockData.users, mockData.students, mockData.staff]);
 
   const addCompany = () => {
     if (!companyForm.company_name) return;
@@ -38,9 +62,59 @@ export default function AdminDashboard({ activePage, currentUser }) {
     setReqForm({ name: '', description: '', is_required: true, deadline: '' });
   };
 
+  const resetUserForm = () => {
+    setUserForm({ role: 'student', full_name: '', email: '', password: '', student_number: '', course: '', year_level: '', employee_id: '', department: '' });
+    setUserFormError('');
+  };
+
+  const addUser = async () => {
+    if (!userForm.full_name || !userForm.email || !userForm.password) {
+      setUserFormError('Full name, email, and password are required.');
+      return;
+    }
+
+    try {
+      const res = await fetch('http://localhost:5000/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userForm)
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        setUserFormError(data.message || 'Unable to create user');
+        return;
+      }
+
+      const created = data.data;
+      const profile = created.profile || {};
+      const createdUser = {
+        user_id: created.user_id,
+        email: created.email,
+        role: created.role,
+        status: created.status,
+        requires_password_change: created.requires_password_change,
+        created_at: created.created_at,
+        details: profile
+      };
+
+      setUsers([...users, createdUser]);
+      if (created.role === 'student') {
+        setStudents([...students, profile]);
+      } else if (created.role === 'staff') {
+        setStaff([...staff, profile]);
+      }
+
+      setShowUserModal(false);
+      resetUserForm();
+    } catch (error) {
+      setUserFormError('Server error while creating user.');
+    }
+  };
+
   const stats = {
-    total_users: mockData.users.length,
-    total_students: mockData.students.length,
+    total_users: users.length,
+    total_students: students.length,
     total_companies: companies.length,
     active_companies: companies.filter(c => c.status === 'active').length,
     ongoing_placements: mockData.ojt_placements.filter(p => p.status === 'ongoing').length,
@@ -50,11 +124,11 @@ export default function AdminDashboard({ activePage, currentUser }) {
 
   const pages = {
     dashboard: <AdminOverview stats={stats} announcements={mockData.announcements} />,
-    users: <ManageUsersView users={mockData.users} students={mockData.students} staff={mockData.staff} admins={mockData.admins} />,
+    users: <ManageUsersView users={users} students={students} staff={staff} admins={mockData.admins} onAdd={() => setShowUserModal(true)} />,
     pending: <PendingAccountsView />,
     companies: <ManageCompaniesView companies={companies} onAdd={() => setShowCompanyModal(true)} setCompanies={setCompanies} />,
     requirements: <ManageRequirementsView reqTypes={reqTypes} onAdd={() => setShowReqModal(true)} setReqTypes={setReqTypes} />,
-    reports: <ReportsView stats={stats} placements={mockData.ojt_placements} students={mockData.students} companies={mockData.companies} />,
+    reports: <ReportsView stats={stats} placements={mockData.ojt_placements} students={students} companies={companies} />,
     profile: <AdminProfileView currentUser={currentUser} />
   };
 
@@ -94,6 +168,87 @@ export default function AdminDashboard({ activePage, currentUser }) {
               </div>
             </div>
             <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={addRequirement}><Plus size={16} /> Add Requirement</button>
+          </div>
+        </div>
+      )}
+
+      {showUserModal && (
+        <div className="modal-overlay" onClick={() => { setShowUserModal(false); resetUserForm(); }}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <div className="modal-header">
+              <h2 className="modal-title">Add New User</h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setShowUserModal(false); resetUserForm(); }}>✕</button>
+            </div>
+
+            {userFormError && (
+              <div style={{ padding: '10px 12px', borderRadius: '8px', marginBottom: '14px', fontSize: '0.82rem', background: 'rgba(244,63,94,0.1)', color: 'var(--status-rejected)' }}>
+                {userFormError}
+              </div>
+            )}
+
+            <div className="form-group">
+              <label className="form-label">Account Type</label>
+              <select
+                className="form-select"
+                value={userForm.role}
+                onChange={e => setUserForm({ ...userForm, role: e.target.value })}
+              >
+                <option value="student">Student</option>
+                <option value="staff">Staff</option>
+              </select>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Full Name</label>
+                <input className="form-input" value={userForm.full_name} onChange={e => setUserForm({ ...userForm, full_name: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Email</label>
+                <input type="email" className="form-input" value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Temporary Password</label>
+              <input type="password" className="form-input" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} />
+            </div>
+
+            {userForm.role === 'student' ? (
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Student Number</label>
+                  <input className="form-input" value={userForm.student_number} onChange={e => setUserForm({ ...userForm, student_number: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Course</label>
+                  <input className="form-input" value={userForm.course} onChange={e => setUserForm({ ...userForm, course: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Year Level</label>
+                  <input className="form-input" value={userForm.year_level} onChange={e => setUserForm({ ...userForm, year_level: e.target.value })} />
+                </div>
+              </div>
+            ) : (
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Employee ID</label>
+                  <input className="form-input" value={userForm.employee_id} onChange={e => setUserForm({ ...userForm, employee_id: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Department</label>
+                  <input className="form-input" value={userForm.department} onChange={e => setUserForm({ ...userForm, department: e.target.value })} />
+                </div>
+              </div>
+            )}
+
+            <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', margin: '4px 0 16px' }}>
+              The temporary password is required to create the account.
+            </p>
+
+            <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={addUser}>
+              <Plus size={16} /> Add User
+            </button>
           </div>
         </div>
       )}
@@ -143,7 +298,9 @@ function AdminOverview({ stats, announcements }) {
   );
 }
 
-function ManageUsersView({ users, students, staff, admins }) {
+function ManageUsersView({ users, students, staff, admins, onAdd }) {
+  const [search, setSearch] = useState('');
+
   const enriched = users.map(u => {
     let profile = null;
     if (u.role === 'student') profile = students.find(s => s.user_id === u.user_id);
@@ -152,15 +309,47 @@ function ManageUsersView({ users, students, staff, admins }) {
     return { ...u, full_name: profile?.full_name || u.email };
   });
 
+  const filtered = enriched.filter(u =>
+    u.full_name.toLowerCase().includes(search.toLowerCase()) ||
+    u.email.toLowerCase().includes(search.toLowerCase()) ||
+    u.role.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <>
-      <div className="page-header"><h1>Manage Users</h1><p>View all registered system users and their roles</p></div>
+      <div className="page-header">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div><h1>Manage Users</h1><p>View all registered system users and their roles</p></div>
+          <button className="btn btn-primary" onClick={onAdd}><Plus size={16} /> Add User</button>
+        </div>
+      </div>
+
+      <div style={{ position: 'relative', maxWidth: '380px', marginBottom: '20px' }}>
+        <Search size={15} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+        <input
+          type="text"
+          placeholder="Search name, email, or role..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{
+            width: '100%', padding: '9px 13px 9px 36px',
+            background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)',
+            borderRadius: '10px', color: 'var(--text-primary)', fontSize: '0.86rem', outline: 'none'
+          }}
+          onFocus={e => e.target.style.borderColor = 'rgba(56,189,248,0.5)'}
+          onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
+        />
+        {search && (
+          <button onClick={() => setSearch('')} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem' }}>✕</button>
+        )}
+      </div>
+
       <div className="card">
         <div className="table-wrapper">
           <table>
             <thead><tr><th>#</th><th>Full Name</th><th>Email</th><th>Role</th><th>Status</th><th>Registered</th></tr></thead>
             <tbody>
-              {enriched.map(u => (
+              {filtered.map(u => (
                 <tr key={u.user_id}>
                   <td style={{ color: 'var(--text-muted)' }}>{u.user_id}</td>
                   <td style={{ fontWeight: 600 }}>{u.full_name}</td>
@@ -460,10 +649,42 @@ function AdminProfileView({ currentUser }) {
     password: ''
   });
   const [msg, setMsg] = useState({ type: '', text: '' });
+  const { updateCurrentUser } = useAuth();
 
-  const handleSave = (e) => {
+  useEffect(() => {
+    setFormData({
+      first_name: currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ')[0] : '',
+      last_name: currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ').slice(1).join(' ') : '',
+      email: currentUser?.email || '',
+      password: ''
+    });
+  }, [currentUser]);
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    setMsg({ type: 'success', text: 'Admin profile updated successfully!' });
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: currentUser.user_id,
+          role: currentUser.role,
+          email: formData.email,
+          password: formData.password,
+          full_name: `${formData.first_name} ${formData.last_name}`.trim()
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        updateCurrentUser(data.user);
+        setMsg({ type: 'success', text: 'Admin profile updated successfully!' });
+        setFormData(prev => ({ ...prev, password: '' }));
+      } else {
+        setMsg({ type: 'error', text: data.message || 'Unable to update profile' });
+      }
+    } catch (error) {
+      setMsg({ type: 'error', text: 'Server error while updating profile' });
+    }
   };
 
   return (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, FileText, Building2, Clock, BookOpen,
@@ -45,20 +45,32 @@ export default function StudentDashboard({ activePage, setActivePage }) {
   const [showReportModal, setShowReportModal] = useState(false);
   const [dtrForm, setDtrForm] = useState({ date: '', time_in: '08:00', time_out: '17:00' });
   const [reportForm, setReportForm] = useState({ week: '', narrative: '' });
-  const [attendance, setAttendance] = useState([...mockData.attendance]);
-  const [requirements, setRequirements] = useState([...mockData.student_requirements]);
-  const [applications, setApplications] = useState([...mockData.applications]);
-  const [reports, setReports] = useState([...mockData.weekly_reports]);
+  const [attendance, setAttendance] = useState([]);
+  const [requirements, setRequirements] = useState([]);
+  const [applications, setApplications] = useState([]);
+  const [reports, setReports] = useState([]);
 
-  const student = mockData.students[0];
-  const placement = mockData.ojt_placements[0];
+  useEffect(() => {
+    setAttendance(mockData.attendance || []);
+    setRequirements(mockData.student_requirements || []);
+    setApplications(mockData.applications || []);
+    setReports(mockData.weekly_reports || []);
+  }, [mockData.attendance, mockData.student_requirements, mockData.applications, mockData.weekly_reports]);
+
+  const student = currentUser?.profile?.student_id
+    ? {
+        ...currentUser.profile,
+        ...(mockData.students.find(s => s.student_id === currentUser.profile.student_id) || {})
+      }
+    : mockData.students.find(s => s.user_id === currentUser?.user_id) || mockData.students[0] || null;
+  const placement = mockData.ojt_placements.find(p => p.student_id === student?.student_id) || mockData.ojt_placements[0] || null;
   const company = mockData.companies.find(c => c.company_id === placement?.company_id);
   const notifications = mockData.notifications.filter(n => n.user_id === currentUser.user_id);
   const unreadNotifs = notifications.filter(n => !n.is_read);
 
   // Build requirement checklist
   const reqChecklist = mockData.requirement_types.map(rt => {
-    const sub = requirements.find(sr => sr.student_id === student.student_id && sr.requirement_id === rt.requirement_id);
+    const sub = requirements.find(sr => sr.student_id === student?.student_id && sr.requirement_id === rt.requirement_id);
     return { ...rt, submission: sub || null };
   });
 
@@ -105,11 +117,11 @@ export default function StudentDashboard({ activePage, setActivePage }) {
   };
 
   const applyCompany = (company_id) => {
-    const exists = applications.find(a => a.student_id === student.student_id && a.company_id === company_id);
+    const exists = applications.find(a => a.student_id === student?.student_id && a.company_id === company_id);
     if (exists) return;
     setApplications([...applications, {
       application_id: applications.length + 1,
-      student_id: student.student_id,
+      student_id: student?.student_id,
       company_id,
       status: 'pending',
       applied_at: new Date().toISOString(),
@@ -119,11 +131,11 @@ export default function StudentDashboard({ activePage, setActivePage }) {
   };
 
   const submitRequirement = (req_id) => {
-    const exists = requirements.find(r => r.student_id === student.student_id && r.requirement_id === req_id);
+    const exists = requirements.find(r => r.student_id === student?.student_id && r.requirement_id === req_id);
     if (exists) return;
     setRequirements([...requirements, {
       submission_id: requirements.length + 1,
-      student_id: student.student_id,
+      student_id: student?.student_id,
       requirement_id: req_id,
       file_path: `/uploads/doc_${Date.now()}.pdf`,
       status: 'pending',
@@ -135,8 +147,8 @@ export default function StudentDashboard({ activePage, setActivePage }) {
   };
 
   const pages = {
-    dashboard: <DashboardView student={student} placement={placement} company={company} hoursRendered={hoursRendered} notifications={notifications} unreadNotifs={unreadNotifs} evaluations={mockData.evaluations} announcements={mockData.announcements} />,
-    profile: <ProfileView student={student} currentUser={currentUser} />,
+    dashboard: <DashboardView student={student || { full_name: currentUser?.email || 'Student', course: 'N/A', year_level: 'N/A', student_number: 'N/A', required_hours: 0 }} placement={placement} company={company} hoursRendered={hoursRendered} notifications={notifications} unreadNotifs={unreadNotifs} evaluations={mockData.evaluations} announcements={mockData.announcements} />,
+    profile: <ProfileView student={student || {}} currentUser={currentUser} />,
     requirements: <RequirementsView reqChecklist={reqChecklist} onSubmit={submitRequirement} />,
     companies: <CompaniesView companies={mockData.companies} applications={applications} onApply={applyCompany} student={student} />,
     attendance: <AttendanceView attendance={attendance.filter(a => a.placement_id === placement?.placement_id)} hoursRendered={hoursRendered} required={student.required_hours} onAddDTR={() => setShowDTRModal(true)} />,
@@ -666,12 +678,49 @@ function ProfileView({ student, currentUser }) {
     password: ''
   });
   const [msg, setMsg] = useState({ type: '', text: '' });
+  const { updateCurrentUser } = useAuth();
 
-  const handleSave = (e) => {
+  useEffect(() => {
+    setFormData({
+      first_name: student.full_name ? student.full_name.split(' ')[0] : '',
+      last_name: student.full_name ? student.full_name.split(' ').slice(1).join(' ') : '',
+      course: student.course || '',
+      year_section: student.year_level || '',
+      gender: student.gender || '',
+      email: currentUser.email || '',
+      password: ''
+    });
+  }, [student, currentUser.email]);
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    // Since we are just using a static mock database on the frontend,
-    // we'd normally call an API here. For now, just show a success message.
-    setMsg({ type: 'success', text: 'Profile updated successfully!' });
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: currentUser.user_id,
+          role: currentUser.role,
+          email: formData.email,
+          password: formData.password,
+          full_name: `${formData.first_name} ${formData.last_name}`.trim(),
+          course: formData.course,
+          year_level: formData.year_section,
+          gender: formData.gender,
+          student_number: student.student_number || ''
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        updateCurrentUser(data.user);
+        setMsg({ type: 'success', text: 'Profile updated successfully!' });
+        setFormData(prev => ({ ...prev, password: '' }));
+      } else {
+        setMsg({ type: 'error', text: data.message || 'Unable to update profile' });
+      }
+    } catch (error) {
+      setMsg({ type: 'error', text: 'Server error while updating profile' });
+    }
   };
 
   return (

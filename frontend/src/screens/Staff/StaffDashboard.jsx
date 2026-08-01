@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, Users, FileCheck, Briefcase, ClipboardList,
@@ -21,11 +21,17 @@ function StatusBadge({ status }) {
 
 export default function StaffDashboard({ activePage, currentUser }) {
   const { mockData } = useAuth();
-  const [submissions, setSubmissions] = useState([...mockData.student_requirements]);
-  const [applications, setApplications] = useState([...mockData.applications]);
-  const [evaluations, setEvaluations] = useState([...mockData.evaluations]);
+  const [submissions, setSubmissions] = useState([]);
+  const [applications, setApplications] = useState([]);
+  const [evaluations, setEvaluations] = useState([]);
   const [showEvalModal, setShowEvalModal] = useState(false);
   const [evalForm, setEvalForm] = useState({ placement_id: 1, evaluator_name: 'Prof. Alejandro Rivera', attendance: '', work: '', attitude: '', remarks: '' });
+
+  useEffect(() => {
+    setSubmissions(mockData.student_requirements || []);
+    setApplications(mockData.applications || []);
+    setEvaluations(mockData.evaluations || []);
+  }, [mockData.student_requirements, mockData.applications, mockData.evaluations]);
 
   const pendingSubmissions = submissions.filter(s => s.status === 'pending');
   const pendingApps = applications.filter(a => a.status === 'pending');
@@ -81,7 +87,7 @@ export default function StaffDashboard({ activePage, currentUser }) {
   });
 
   const pages = {
-    dashboard: <StaffOverview pendingSubmissions={pendingSubmissions} pendingApps={pendingApps} evaluations={evaluations} announcements={mockData.announcements} notifications={mockData.notifications.filter(n => n.user_id === 2)} />,
+    dashboard: <StaffOverview pendingSubmissions={pendingSubmissions} pendingApps={pendingApps} evaluations={evaluations} announcements={mockData.announcements} notifications={mockData.notifications.filter(n => n.user_id === currentUser?.user_id)} />,
     profiling: <StudentProfilingView />,
     requirements: <ReviewRequirementsView enrichedSubmissions={enrichedSubmissions} onReview={reviewRequirement} />,
     applications: <ApplicationsView enrichedApps={enrichedApps} onApprove={approveApplication} onReject={rejectApplication} />,
@@ -464,10 +470,42 @@ function StaffProfileView({ currentUser }) {
     password: ''
   });
   const [msg, setMsg] = useState({ type: '', text: '' });
+  const { updateCurrentUser } = useAuth();
 
-  const handleSave = (e) => {
+  useEffect(() => {
+    setFormData({
+      first_name: currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ')[0] : '',
+      last_name: currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ').slice(1).join(' ') : '',
+      email: currentUser?.email || '',
+      password: ''
+    });
+  }, [currentUser]);
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    setMsg({ type: 'success', text: 'Profile updated successfully!' });
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: currentUser.user_id,
+          role: currentUser.role,
+          email: formData.email,
+          password: formData.password,
+          full_name: `${formData.first_name} ${formData.last_name}`.trim()
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        updateCurrentUser(data.user);
+        setMsg({ type: 'success', text: 'Profile updated successfully!' });
+        setFormData(prev => ({ ...prev, password: '' }));
+      } else {
+        setMsg({ type: 'error', text: data.message || 'Unable to update profile' });
+      }
+    } catch (error) {
+      setMsg({ type: 'error', text: 'Server error while updating profile' });
+    }
   };
 
   return (

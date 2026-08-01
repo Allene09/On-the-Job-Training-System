@@ -42,7 +42,7 @@ exports.login = async (req, res) => {
     return res.json({
       success: true,
       message: "Login successful",
-      token: `mock-jwt-token-for-user-${user.user_id}`,
+      token: `session-token-for-user-${user.user_id}`,
       user: {
         user_id: user.user_id,
         email: user.email,
@@ -60,7 +60,7 @@ exports.login = async (req, res) => {
 
 exports.registerStudent = async (req, res) => {
   try {
-    const { email, password, full_name, gender, course, year_section } = req.body;
+    const { email, password, full_name, gender, course, year_section, year_level } = req.body;
     const [existing] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
     
     if (existing.length > 0) {
@@ -68,11 +68,15 @@ exports.registerStudent = async (req, res) => {
     }
 
     // Call stored procedure
-    // Note: p_student_number is missing in original req.body, passing empty or generic for now
     const student_number = `SN-${Date.now()}`;
+    const resolvedYearLevel = year_level || year_section;
+    if (!resolvedYearLevel) {
+      return res.status(400).json({ success: false, message: 'year_level is required' });
+    }
+
     await pool.query(
       'CALL sp_RegisterStudent(?, ?, ?, ?, ?, ?, ?)',
-      [email, password, student_number, full_name, gender, course, year_section]
+      [email, password, student_number, full_name, gender, course, resolvedYearLevel]
     );
 
     return res.status(201).json({
@@ -102,5 +106,71 @@ exports.changePassword = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const {
+      user_id,
+      role,
+      email,
+      password,
+      full_name,
+      student_number,
+      course,
+      year_level,
+      gender,
+      employee_id,
+      department
+    } = req.body;
+
+    if (!user_id || !role || !email) {
+      return res.status(400).json({ success: false, message: 'user_id, role, and email are required' });
+    }
+
+    await pool.query(
+      'CALL sp_UpdateUserProfile(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        user_id,
+        role,
+        email,
+        password || '',
+        full_name || '',
+        student_number || '',
+        course || '',
+        year_level || '',
+        gender || '',
+        employee_id || '',
+        department || ''
+      ]
+    );
+
+    let profile = null;
+    if (role === 'student') {
+      const [students] = await pool.query('SELECT * FROM students WHERE user_id = ?', [user_id]);
+      profile = students[0] || null;
+    } else if (role === 'staff') {
+      const [staff] = await pool.query('SELECT * FROM staff WHERE user_id = ?', [user_id]);
+      profile = staff[0] || null;
+    } else if (role === 'admin') {
+      const [admins] = await pool.query('SELECT * FROM admins WHERE user_id = ?', [user_id]);
+      profile = admins[0] || null;
+    }
+
+    const [users] = await pool.query(
+      'SELECT user_id, email, role, status, requires_password_change, created_at FROM users WHERE user_id = ?',
+      [user_id]
+    );
+    const user = users[0] || { user_id, email, role, status: 'active', requires_password_change: false };
+
+    return res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: { ...user, profile }
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };

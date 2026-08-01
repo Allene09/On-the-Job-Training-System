@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const staffController = require('../controllers/staffController');
 
-router.get('/dashboard', staffController.getStaffDashboard);
+router.get('/dashboard', staffController.getDashboardData);
+router.get('/students', staffController.getStudentProfiles);
+router.get('/requirements/pending', staffController.getPendingRequirements);
 router.post('/requirements/review', staffController.reviewRequirement);
 router.post('/applications/approve', staffController.approveApplication);
 router.post('/evaluation/submit', staffController.submitEvaluation);

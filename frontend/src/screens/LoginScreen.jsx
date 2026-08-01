@@ -5,17 +5,17 @@ import {
 } from 'lucide-react';
 
 const ROLES = [
-  { key: 'student', label: 'Student', icon: GraduationCap, email: 'student@school.edu.ph',     color: 'cyan'   },
-  { key: 'staff',   label: 'Coordinator', icon: Shield,    email: 'coordinator@school.edu.ph', color: 'purple' },
-  { key: 'admin',   label: 'Admin',    icon: UserCog,      email: 'admin@school.edu.ph',        color: 'green'  }
+  { key: 'student', label: 'Student', icon: GraduationCap, color: 'cyan' },
+  { key: 'staff', label: 'Coordinator', icon: Shield, color: 'purple' },
+  { key: 'admin', label: 'Admin', icon: UserCog, color: 'green' }
 ];
 
 export default function LoginScreen({ onBack }) {
   const { login } = useAuth();
   const [selectedRole, setSelectedRole] = useState('student');
   const [showPass, setShowPass] = useState(false);
-  const [email, setEmail] = useState('student@school.edu.ph');
-  const [password, setPassword] = useState('pass123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   
@@ -26,9 +26,8 @@ export default function LoginScreen({ onBack }) {
 
   const handleRoleChange = (role) => {
     setSelectedRole(role);
-    const r = ROLES.find(r => r.key === role);
-    setEmail(r.email);
-    setPassword('pass123');
+    setEmail('');
+    setPassword('');
   };
 
   const handleLogin = async (e) => {
@@ -193,22 +192,6 @@ export default function LoginScreen({ onBack }) {
             )}
           </form>
         )}
-
-        {/* Demo hint */}
-        <div style={{
-          marginTop: '20px', padding: '12px', background: 'rgba(56,189,248,0.06)',
-          border: '1px solid rgba(56,189,248,0.15)', borderRadius: '10px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-            <BookOpen size={14} color="var(--text-accent)" />
-            <span style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-accent)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Demo Credentials</span>
-          </div>
-          {ROLES.map(r => (
-            <div key={r.key} style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '2px' }}>
-              <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>{r.label}:</span> {r.email} / pass123
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
