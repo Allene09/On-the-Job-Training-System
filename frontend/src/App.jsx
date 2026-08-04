@@ -6,35 +6,47 @@ import StudentDashboard from './screens/Student/StudentDashboard';
 import StaffDashboard from './screens/Staff/StaffDashboard';
 import AdminDashboard from './screens/Admin/AdminDashboard';
 import {
-  LayoutDashboard, FileText, Building2, Clock, BookOpen,
-  TrendingUp, Bell, Star, Users, BarChart3, Settings,
-  FileCheck, Briefcase, ClipboardList, LogOut, Menu, X
+  LayoutDashboard, Users, Building2, Calendar, FileText,
+  Settings, LogOut, Menu, X, Bell, ChevronRight, Activity, Database
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const NAV_CONFIG = {
   student: [
-    { id: 'dashboard',    label: 'Dashboard',         icon: LayoutDashboard },
-    { id: 'requirements', label: 'Requirements',       icon: FileText },
-    { id: 'companies',    label: 'Companies',          icon: Building2 },
-    { id: 'attendance',   label: 'Attendance / DTR',   icon: Clock },
-    { id: 'reports',      label: 'Weekly Reports',     icon: BookOpen },
-    { id: 'progress',     label: 'Progress',           icon: TrendingUp }
+    {
+      group: 'Main', items: [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'requirements', label: 'Requirements', icon: FileText },
+        { id: 'companies', label: 'Companies', icon: Building2 },
+        { id: 'attendance', label: 'Attendance / DTR', icon: Calendar },
+        { id: 'reports', label: 'Weekly Reports', icon: FileText },
+        { id: 'progress', label: 'Progress', icon: Activity }
+      ]
+    }
   ],
   staff: [
-    { id: 'dashboard',    label: 'Dashboard',          icon: LayoutDashboard },
-    { id: 'profiling',    label: 'Student Profiling',  icon: Users },
-    { id: 'requirements', label: 'Review Requirements',icon: FileCheck },
-    { id: 'applications', label: 'Applications',       icon: Briefcase },
-    { id: 'attendance',   label: 'Attendance Monitor', icon: Clock },
-    { id: 'evaluations',  label: 'Evaluations',        icon: Star }
+    {
+      group: 'Management', items: [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'profiling', label: 'Student Profiling', icon: Users },
+        { id: 'requirements', label: 'Review Requirements', icon: FileText },
+        { id: 'applications', label: 'Applications', icon: Building2 },
+        { id: 'attendance', label: 'Attendance Monitor', icon: Calendar },
+        { id: 'evaluations', label: 'Evaluations', icon: Activity }
+      ]
+    }
   ],
   admin: [
-    { id: 'dashboard',    label: 'Dashboard',          icon: LayoutDashboard },
-    { id: 'users',        label: 'Manage Users',       icon: Users },
-    { id: 'companies',    label: 'Partner Companies',  icon: Building2 },
-    { id: 'pending',      label: 'Pending Accounts',   icon: Users },
-    { id: 'requirements', label: 'Requirements Config',icon: Settings },
-    { id: 'reports',      label: 'Reports & Analytics',icon: BarChart3 }
+    {
+      group: 'System', items: [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'users', label: 'Manage Users', icon: Users },
+        { id: 'companies', label: 'Partner Companies', icon: Building2 },
+        { id: 'pending', label: 'Pending Accounts', icon: Database },
+        { id: 'requirements', label: 'Requirements Config', icon: Settings },
+        { id: 'reports', label: 'Reports & Analytics', icon: Activity }
+      ]
+    }
   ]
 };
 
@@ -55,65 +67,81 @@ function Sidebar({ navItems, activePage, setActivePage, currentUser, onLogout, o
 
   return (
     <>
-      {/* Mobile overlay */}
-      {open && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 99, backdropFilter: 'blur(2px)' }}
-          onClick={() => setOpen(false)}
-        />
-      )}
-
-      <aside className="sidebar" style={{ transform: open ? 'translateX(0)' : undefined }}>
-        {/* Logo */}
+      <div
+        className={`sidebar-overlay ${open ? 'visible' : ''}`}
+        onClick={() => setOpen(false)}
+        style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', zIndex: 90, display: open ? 'block' : 'none'
+        }}
+      />
+      <motion.aside
+        className="sidebar"
+        style={{
+          transform: open ? 'translateX(0)' : '',
+          width: '260px',
+          margin: '16px',
+          height: 'calc(100vh - 32px)',
+          borderRadius: '24px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          border: '1px solid rgba(255,255,255,0.08)'
+        }}
+        initial={false}
+        animate={{ x: open ? 0 : (window.innerWidth <= 768 ? -300 : 0) }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      >
         <div className="sidebar-logo">
-          <img src="/logo.png" alt="OJTrack" />
+          <img src="/logo.png" alt="Logo" />
           <span className="sidebar-logo-text">OJTrack</span>
         </div>
 
-        {/* Role badge */}
         <div className={`sidebar-role-badge role-${currentUser.role}`}>
-          {currentUser.role === 'student' ? '🎓 Student' : currentUser.role === 'staff' ? '🛡️ Coordinator' : '⚙️ Administrator'}
+          {currentUser.role.toUpperCase()}
         </div>
 
-        {/* Nav */}
         <nav className="sidebar-nav">
-          <div className="nav-group-label">Navigation</div>
-          {navItems.map((item, i) => (
-            <button
-              key={item.id}
-              className={`nav-item animate-slide-in-left delay-${(i + 1) * 100} ${activePage === item.id ? 'active' : ''}`}
-              onClick={() => { setActivePage(item.id); setOpen(false); }}
-            >
-              <item.icon size={18} />
-              {item.label}
-            </button>
+          {navItems.map((group, idx) => (
+            <div key={idx} style={{ marginBottom: '16px' }}>
+              <div className="nav-group-label">{group.group}</div>
+              {group.items.map(item => (
+                <button
+                  key={item.id}
+                  className={`nav-item ${activePage === item.id ? 'active' : ''}`}
+                  onClick={() => { setActivePage(item.id); setOpen(false); }}
+                >
+                  <item.icon />
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
 
-        {/* User footer */}
-        <div className="sidebar-footer" style={{ cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} onClick={() => { setActivePage('profile'); setOpen(false); }}>
-          <div className="user-info">
+        <div className="sidebar-footer">
+          <div className="user-info" onClick={() => { setActivePage('profile'); setOpen(false); }} style={{ cursor: 'pointer' }}>
             <div className="user-avatar">{initials(displayName)}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="user-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
-              <div className="user-email" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser.email}</div>
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <div className="user-name" style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{displayName}</div>
+              <div className="user-email" style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{currentUser.email}</div>
             </div>
-            <button
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
               onClick={(e) => { e.stopPropagation(); onLogout(); }}
               title="Sign out"
               style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '6px', display: 'flex', flexShrink: 0 }}
             >
               <LogOut size={16} />
-            </button>
+            </motion.button>
           </div>
         </div>
-      </aside>
+      </motion.aside>
     </>
   );
 }
 
 function AppShell() {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, mockData } = useAuth();
   const [activePage, setActivePage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -127,9 +155,11 @@ function AppShell() {
 
   const DashboardComponent = {
     student: StudentDashboard,
-    staff:   StaffDashboard,
-    admin:   AdminDashboard
+    staff: StaffDashboard,
+    admin: AdminDashboard
   }[currentUser.role];
+
+  const unreadNotifs = mockData?.notifications?.filter(n => n.user_id === currentUser?.user_id && !n.is_read) || [];
 
   return (
     <div className="app-container">
@@ -161,16 +191,27 @@ function AppShell() {
           <div className="topbar-actions">
             <button className="notif-btn" title="Notifications" onClick={() => setActivePage('dashboard')}>
               <Bell size={18} />
-              <span className="notif-badge" />
+              {unreadNotifs.length > 0 && <span className="notif-badge" />}
             </button>
           </div>
         </div>
 
-        {/* Render role dashboard */}
-        <div key={activePage} className="animate-fade-in" style={{ height: '100%' }}>
-          {DashboardComponent && (
-            <DashboardComponent activePage={activePage} setActivePage={setActivePage} currentUser={currentUser} />
-          )}
+        {/* Render role dashboard with AnimatePresence */}
+        <div style={{ height: '100%', position: 'relative' }}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activePage}
+              initial={{ opacity: 0, y: 10, filter: 'blur(5px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -10, filter: 'blur(5px)' }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              style={{ height: '100%' }}
+            >
+              {DashboardComponent && (
+                <DashboardComponent activePage={activePage} setActivePage={setActivePage} currentUser={currentUser} />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
     </div>

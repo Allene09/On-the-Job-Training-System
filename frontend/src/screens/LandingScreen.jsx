@@ -5,6 +5,7 @@ import {
   FileCheck, Clock, ArrowRight, CheckCircle2,
   Search, MapPin, Briefcase, Users, AlertCircle
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function LandingScreen({ onGetStarted }) {
   const services = [
@@ -62,7 +63,8 @@ export default function LandingScreen({ onGetStarted }) {
 
   const handleApply = (company_id) => {
     if (appliedIds.includes(company_id)) return;
-    setAppliedIds(prev => [...prev, company_id]);
+    localStorage.setItem('pendingApplication', company_id);
+    onGetStarted();
   };
 
   const industryColor = (industry = '') => {
@@ -108,31 +110,53 @@ export default function LandingScreen({ onGetStarted }) {
 
       {/* Hero Section */}
       <section style={{ padding: '80px 20px', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', position: 'relative', zIndex: 1 }}>
-        <h1 className="typewriter-text" style={{ fontSize: '3.5rem', fontWeight: 800, marginBottom: '20px', lineHeight: 1.1, margin: '0 auto 24px', display: 'inline-block', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+        <motion.h1 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="kinetic-type" style={{ fontSize: '3.5rem', fontWeight: 800, marginBottom: '20px', lineHeight: 1.1, margin: '0 auto 24px', display: 'inline-block', whiteSpace: 'nowrap', overflow: 'hidden' }}>
           Streamline Your <span style={{ color: '#38bdf8' }}>OJTrack Monitoring System</span>
-        </h1>
-        <p className="animate-fade-in-up delay-200" style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto 40px', lineHeight: 1.6 }}>
+        </motion.h1>
+        <motion.p 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto 40px', lineHeight: 1.6 }}>
           OJTrack digitizes the entire internship process — from requirement submissions and company applications to daily time records and final evaluations.
-        </p>
-        <button className="btn btn-primary animate-fade-in-up delay-300" style={{ padding: '16px 32px', fontSize: '1.1rem', borderRadius: '30px' }} onClick={onGetStarted}>
+        </motion.p>
+        <motion.button 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.4, type: 'spring', stiffness: 200 }}
+          className="btn btn-primary" style={{ padding: '16px 32px', fontSize: '1.1rem', borderRadius: '30px' }} onClick={onGetStarted}>
           Access System
-        </button>
+        </motion.button>
       </section>
 
       {/* Services Grid */}
       <section style={{ padding: '60px 40px', background: 'rgba(30, 41, 59, 0.5)', borderTop: '1px solid rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <h2 className="animate-fade-in-up" style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '40px', fontWeight: 700 }}>Our Services &amp; Features</h2>
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '40px', fontWeight: 700 }}>Our Services &amp; Features</motion.h2>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px' }}>
             {services.map((s, i) => (
-              <div key={i} className={`card animate-fade-in-up delay-${(i + 1) * 100}`} style={{ padding: '32px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <motion.div 
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.1 * i }}
+                key={i} className="card" style={{ padding: '32px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <div style={{ background: 'var(--color-bg-deep)', padding: '16px', borderRadius: '16px', marginBottom: '20px' }}>
                   {s.icon}
                 </div>
                 <h3 style={{ fontSize: '1.1rem', marginBottom: '12px', color: 'var(--text-primary)' }}>{s.title}</h3>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{s.desc}</p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -143,7 +167,12 @@ export default function LandingScreen({ onGetStarted }) {
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
           {/* Section Header */}
-          <div className="animate-fade-in-up delay-100" style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            style={{ textAlign: 'center', marginBottom: '40px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: '999px', padding: '6px 16px', marginBottom: '16px', fontSize: '0.8rem', color: '#38bdf8', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
               <Building2 size={14} /> School Partner Companies
             </div>
@@ -153,10 +182,15 @@ export default function LandingScreen({ onGetStarted }) {
             <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '560px', margin: '0 auto', lineHeight: 1.6 }}>
               Browse accredited Host Training Establishments (HTEs) partnered with the school. Apply directly to secure your OJT placement.
             </p>
-          </div>
+          </motion.div>
 
           {/* Search Bar */}
-          <div className="animate-fade-in-up delay-200" style={{ position: 'relative', maxWidth: '480px', margin: '0 auto 36px' }}>
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            style={{ position: 'relative', maxWidth: '480px', margin: '0 auto 36px' }}>
             <Search size={17} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
             <input
               type="text"
@@ -183,7 +217,7 @@ export default function LandingScreen({ onGetStarted }) {
                 style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1rem', cursor: 'pointer', lineHeight: 1 }}
               >✕</button>
             )}
-          </div>
+          </motion.div>
 
           {/* Results count */}
           {companySearch && (
@@ -204,12 +238,13 @@ export default function LandingScreen({ onGetStarted }) {
                 const isFull = c.slots_available === 0;
                 const isApplied = appliedIds.includes(c.company_id);
                 const { bg: indBg, color: indColor } = industryColor(c.industry);
-                const animDelay = (i % 3 + 3) * 100; // stagger delays
-
                 return (
-                  <div
+                  <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: 0.1 * (i % 3) }}
                     key={c.company_id}
-                    className={`animate-fade-in-up delay-${animDelay}`}
                     style={{
                       background: 'rgba(30, 41, 59, 0.7)',
                       backdropFilter: 'blur(12px)',
@@ -228,7 +263,7 @@ export default function LandingScreen({ onGetStarted }) {
                     onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
                   >
                     {/* Company Photo */}
-                    <div style={{ height: '140px', width: '100%', background: `url(${c.photo_url || '/company1.png'}) center/cover no-repeat` }} />
+                    <div style={{ height: '140px', width: '100%', background: `url(${c.photo_url || ''}) center/cover no-repeat`, backgroundColor: '#1e293b' }} />
                     
                     <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
                     {/* Full banner */}
@@ -340,7 +375,7 @@ export default function LandingScreen({ onGetStarted }) {
                       </p>
                     )}
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
@@ -361,20 +396,35 @@ export default function LandingScreen({ onGetStarted }) {
 
       {/* Highlights */}
       <section style={{ padding: '60px 40px', maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '40px', alignItems: 'center' }}>
-        <div className="animate-fade-in-up delay-100" style={{ flex: '1 1 400px' }}>
+        <motion.div 
+          initial={{ opacity: 0, x: -30 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          style={{ flex: '1 1 400px' }}>
           <h2 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: '20px' }}>Why Choose OJTrack?</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '30px', fontSize: '1.05rem', lineHeight: 1.6 }}>
             Managing student internships manually leads to lost paperwork, inaccurate DTRs, and delayed approvals. We provide a single source of truth for students, coordinators, and administrators.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {features.map((f, i) => (
-              <div key={i} className={`animate-fade-in-up delay-${(i % 5 + 2) * 100}`} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1rem', color: 'var(--text-primary)' }}>
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: 0.1 * i }}
+                key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1rem', color: 'var(--text-primary)' }}>
                 <CheckCircle2 size={20} color="#10b981" /> {f}
-              </div>
+              </motion.div>
             ))}
           </div>
-        </div>
-        <div className="animate-fade-in-up delay-400" style={{ flex: '1 1 400px', display: 'flex', justifyContent: 'center' }}>
+        </motion.div>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          style={{ flex: '1 1 400px', display: 'flex', justifyContent: 'center' }}>
           <div style={{ 
             width: '100%', maxWidth: '400px', height: '300px', borderRadius: '24px', 
             background: 'var(--gradient-card-glow)', border: '1px solid var(--color-border-accent)',
@@ -383,7 +433,7 @@ export default function LandingScreen({ onGetStarted }) {
           }}>
             <TrendingUp size={80} color="#38bdf8" style={{ opacity: 0.8 }} />
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* Footer */}

@@ -4,6 +4,7 @@ import API_BASE_URL from '../config/api';
 import {
   GraduationCap, Shield, UserCog, Eye, EyeOff, BookOpen, ArrowLeft
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const ROLES = [
   { key: 'student', label: 'Student', icon: GraduationCap, color: 'cyan' },
@@ -75,9 +76,17 @@ export default function LoginScreen({ onBack }) {
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       backdropFilter: 'blur(10px)',
-      minHeight: '100vh'
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px'
     }}>
-      <div className="login-card" style={{ position: 'relative', background: 'var(--color-bg-glass)', backdropFilter: 'blur(20px)' }}>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.5, type: 'spring', stiffness: 300, damping: 25 }}
+        className="login-card" style={{ position: 'relative', background: 'var(--color-bg-glass)', backdropFilter: 'blur(20px)' }}>
         {onBack && (
           <button 
             className="btn btn-ghost" 
@@ -111,8 +120,15 @@ export default function LoginScreen({ onBack }) {
         </div>
 
         {/* Form */}
+        <AnimatePresence mode="wait">
         {!needsPassChange ? (
-          <form onSubmit={handleLogin}>
+          <motion.form 
+            key="login"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.3 }}
+            onSubmit={handleLogin}>
           <div className="form-group">
             <label className="form-label">Email Address</label>
             <input
@@ -161,9 +177,15 @@ export default function LoginScreen({ onBack }) {
               {errorMsg}
             </div>
           )}
-        </form>
+          </motion.form>
         ) : (
-          <form onSubmit={handleChangePassword}>
+          <motion.form 
+            key="change-password"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+            onSubmit={handleChangePassword}>
             <div style={{ marginBottom: '16px', color: 'var(--text-primary)', fontSize: '0.9rem', textAlign: 'center' }}>
               For your security, please set a new password before continuing.
             </div>
@@ -191,9 +213,10 @@ export default function LoginScreen({ onBack }) {
                 {errorMsg}
               </div>
             )}
-          </form>
+          </motion.form>
         )}
-      </div>
+        </AnimatePresence>
+      </motion.div>
     </div>
   );
 }

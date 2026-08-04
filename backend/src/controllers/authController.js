@@ -1,5 +1,8 @@
 const { pool } = require('../config/db');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_development_only';
 exports.login = async (req, res) => {
   try {
     const { email, password, role } = req.body;
@@ -13,8 +16,15 @@ exports.login = async (req, res) => {
 
     const user = userMatch;
     
-    // In a real app, compare password_hash with bcrypt
-    if (user.password_hash !== password) {
+    let isMatch = false;
+    if (user.password_hash.startsWith('$2')) {
+      isMatch = await bcrypt.compare(password, user.password_hash);
+    } else {
+      // Legacy plaintext comparison for existing dev data
+      isMatch = (password === user.password_hash);
+    }
+    
+    if (!isMatch) {
       return res.status(401).json({ success: false, message: "Invalid password" });
     }
 
@@ -25,10 +35,16 @@ exports.login = async (req, res) => {
       return res.status(403).json({ success: false, message: "Account is pending administrator approval." });
     }
 
+    const token = jwt.sign(
+      { user_id: user.user_id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
     return res.json({
       success: true,
       message: "Login successful",
-      token: `session-token-for-user-${user.user_id}`,
+      token,
       user: {
         user_id: user.user_id,
         email: user.email,
@@ -55,15 +71,17 @@ exports.registerStudent = async (req, res) => {
     }
 
     // Call stored procedure
-    const student_number = `SN-${Date.now()}`;
+    const student_number = req.body.student_number || `SN-${Date.now()}`;
     const resolvedYearLevel = year_level || year_section;
     if (!resolvedYearLevel) {
       return res.status(400).json({ success: false, message: 'year_level is required' });
     }
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     await pool.query(
       'CALL sp_RegisterStudent(?, ?, ?, ?, ?, ?, ?)',
-      [email, password, student_number, full_name, gender, course, resolvedYearLevel]
+      [email, hashedPassword, student_number, full_name, gender, course, resolvedYearLevel]
     );
 
     return res.status(201).json({
@@ -80,9 +98,12 @@ exports.registerStudent = async (req, res) => {
 exports.changePassword = async (req, res) => {
   try {
     const { user_id, new_password } = req.body;
+    
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+
     const [result] = await pool.query(
       'CALL sp_ChangeUserPassword(?, ?)',
-      [user_id, new_password]
+      [user_id, hashedPassword]
     );
 
     if (result.affectedRows === 0) {
@@ -116,13 +137,15 @@ exports.updateProfile = async (req, res) => {
       return res.status(400).json({ success: false, message: 'user_id, role, and email are required' });
     }
 
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : '';
+
     await pool.query(
       'CALL sp_UpdateUserProfile(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         user_id,
         role,
         email,
-        password || '',
+        hashedPassword,
         full_name || '',
         student_number || '',
         course || '',

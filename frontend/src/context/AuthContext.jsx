@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import API_BASE_URL from '../config/api';
+import API_BASE_URL, { fetchWithAuth } from '../config/api';
 
 const AuthContext = createContext(null);
 
@@ -36,17 +36,17 @@ export const AuthProvider = ({ children }) => {
       try {
         const studentId = currentUser?.profile?.student_id;
         const [companiesRes, requirementTypesRes, submissionsRes, applicationsRes, usersRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/companies`),
-          fetch(`${API_BASE_URL}/requirements/types`),
-          fetch(`${API_BASE_URL}/requirements/submissions`),
-          fetch(`${API_BASE_URL}/applications`),
-          fetch(`${API_BASE_URL}/admin/users`)
+          fetchWithAuth(`${API_BASE_URL}/companies`),
+          fetchWithAuth(`${API_BASE_URL}/requirements/types`),
+          fetchWithAuth(`${API_BASE_URL}/requirements/submissions`),
+          fetchWithAuth(`${API_BASE_URL}/applications`),
+          fetchWithAuth(`${API_BASE_URL}/admin/users`)
         ]);
 
         const [announcementsRes, notificationsRes, weeklyReportsRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/admin/announcements`),
-          fetch(`${API_BASE_URL}/admin/notifications?user_id=${currentUser.user_id}`),
-          studentId ? fetch(`${API_BASE_URL}/student/weekly-reports?student_id=${studentId}`) : Promise.resolve({ ok: true, json: async () => ({ data: [] }) })
+          fetchWithAuth(`${API_BASE_URL}/admin/announcements`),
+          fetchWithAuth(`${API_BASE_URL}/admin/notifications?user_id=${currentUser.user_id}`),
+          studentId ? fetchWithAuth(`${API_BASE_URL}/student/weekly-reports?student_id=${studentId}`) : Promise.resolve({ ok: true, json: async () => ({ data: [] }) })
         ]);
 
         const companiesData = companiesRes.ok ? await companiesRes.json() : { data: [] };
@@ -85,7 +85,7 @@ export const AuthProvider = ({ children }) => {
           students
             .filter(student => student.student_id)
             .map(async student => {
-              const res = await fetch(`${API_BASE_URL}/student/placements?student_id=${student.student_id}`);
+              const res = await fetchWithAuth(`${API_BASE_URL}/student/placements?student_id=${student.student_id}`);
               if (!res.ok) return [];
               const payload = await res.json();
               return Array.isArray(payload.data) ? payload.data : [];
@@ -98,7 +98,7 @@ export const AuthProvider = ({ children }) => {
         const [attendanceCollections, evaluationCollections] = await Promise.all([
           Promise.all(
             placementIds.map(async placementId => {
-              const res = await fetch(`${API_BASE_URL}/attendance/${placementId}`);
+              const res = await fetchWithAuth(`${API_BASE_URL}/attendance/${placementId}`);
               if (!res.ok) return [];
               const payload = await res.json();
               return Array.isArray(payload.data?.records) ? payload.data.records : [];
@@ -106,7 +106,7 @@ export const AuthProvider = ({ children }) => {
           ),
           Promise.all(
             placementIds.map(async placementId => {
-              const res = await fetch(`${API_BASE_URL}/evaluations/${placementId}`);
+              const res = await fetchWithAuth(`${API_BASE_URL}/evaluations/${placementId}`);
               if (!res.ok) return [];
               const payload = await res.json();
               return Array.isArray(payload.data) ? payload.data : [];
@@ -163,6 +163,7 @@ export const AuthProvider = ({ children }) => {
         if (data.user.requires_password_change) {
           return { success: true, requires_password_change: true, user_id: data.user.user_id };
         }
+        localStorage.setItem('token', data.token);
         setCurrentUser(data.user);
         return { success: true };
       }
@@ -174,7 +175,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => setCurrentUser(null);
+  const logout = () => {
+    localStorage.removeItem('token');
+    setCurrentUser(null);
+  };
   const updateCurrentUser = (user) => setCurrentUser(user);
 
   return (

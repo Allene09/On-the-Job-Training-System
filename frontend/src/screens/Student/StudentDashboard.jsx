@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import API_BASE_URL from '../../config/api';
+import API_BASE_URL, { fetchWithAuth } from '../../config/api';
 import {
   LayoutDashboard, FileText, Building2, Clock, BookOpen,
   TrendingUp, Bell, Star, CheckCircle2, XCircle, AlertCircle,
-  Plus, Send, ChevronRight, Award, Search, MapPin, Briefcase, Users
+  Plus, Send, ChevronRight, Award, Search, MapPin, Briefcase, Users, Save
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 function StatusBadge({ status }) {
   const map = {
@@ -60,11 +61,23 @@ export default function StudentDashboard({ activePage, setActivePage }) {
 
   const student = currentUser?.profile?.student_id
     ? {
-        ...currentUser.profile,
-        ...(mockData.students.find(s => s.student_id === currentUser.profile.student_id) || {})
-      }
+      ...currentUser.profile,
+      ...(mockData.students.find(s => s.student_id === currentUser.profile.student_id) || {})
+    }
     : mockData.students.find(s => s.user_id === currentUser?.user_id) || mockData.students[0] || null;
-  const placement = mockData.ojt_placements.find(p => p.student_id === student?.student_id) || mockData.ojt_placements[0] || null;
+
+  useEffect(() => {
+    const pending = localStorage.getItem('pendingApplication');
+    if (pending && student?.student_id) {
+      // Small timeout to ensure everything is mounted
+      setTimeout(() => {
+        applyCompany(parseInt(pending));
+        localStorage.removeItem('pendingApplication');
+      }, 500);
+    }
+  }, [student?.student_id]);
+
+  const placement = mockData.ojt_placements.find(p => p.student_id === student?.student_id) || null;
   const company = mockData.companies.find(c => c.company_id === placement?.company_id);
   const notifications = mockData.notifications.filter(n => n.user_id === currentUser.user_id);
   const unreadNotifs = notifications.filter(n => !n.is_read);
@@ -84,7 +97,7 @@ export default function StudentDashboard({ activePage, setActivePage }) {
   const logDTR = async () => {
     if (!dtrForm.date || !dtrForm.time_in || !dtrForm.time_out || !placement) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/attendance/record`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/attendance/record`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -110,7 +123,7 @@ export default function StudentDashboard({ activePage, setActivePage }) {
   const submitReport = async () => {
     if (!reportForm.week || !reportForm.narrative || !placement) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/student/weekly-report`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/student/weekly-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -144,7 +157,7 @@ export default function StudentDashboard({ activePage, setActivePage }) {
     const exists = applications.find(a => a.student_id === student?.student_id && a.company_id === company_id);
     if (exists) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/student/apply`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/student/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ student_id: student?.student_id, company_id })
@@ -173,7 +186,7 @@ export default function StudentDashboard({ activePage, setActivePage }) {
     if (exists) return;
     const file_path = `/uploads/doc_${Date.now()}.pdf`;
     try {
-      const res = await fetch(`${API_BASE_URL}/student/requirements/submit`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/student/requirements/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ student_id: student?.student_id, requirement_id: req_id, file_path })
@@ -234,7 +247,7 @@ export default function StudentDashboard({ activePage, setActivePage }) {
               </div>
             </div>
             <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={logDTR}>
-              <Send size={16} /> Save DTR Record
+              <Save size={16} /> Save DTR Record
             </button>
           </div>
         </div>
@@ -257,7 +270,7 @@ export default function StudentDashboard({ activePage, setActivePage }) {
               <textarea className="form-textarea" placeholder="Describe your tasks and learnings for this week..." value={reportForm.narrative} onChange={e => setReportForm({ ...reportForm, narrative: e.target.value })} style={{ minHeight: '120px' }} />
             </div>
             <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={submitReport}>
-              <Send size={16} /> Submit Report
+              <FileText size={16} /> Submit Report
             </button>
           </div>
         </div>
@@ -283,42 +296,43 @@ function DashboardView({ student, placement, company, hoursRendered, notificatio
         <p>{student.course} · {student.year_level} · {student.student_number}</p>
       </div>
 
-      <div className="stat-grid">
-        <div className="stat-card cyan animate-fade-in-up delay-100">
-          <div className="stat-icon cyan"><TrendingUp size={20} /></div>
+      <div className="bento-grid">
+        <motion.div className="bento-card col-span-3 stat-card cyan" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <div className="stat-icon cyan"><TrendingUp size={24} /></div>
           <div>
-            <div className="stat-value">{hoursRendered}h</div>
+            <div className="stat-value" style={{ fontSize: '2.5rem' }}>{hoursRendered}h</div>
             <div className="stat-label">Hours Rendered</div>
           </div>
-        </div>
-        <div className="stat-card purple animate-fade-in-up delay-200">
-          <div className="stat-icon purple"><Clock size={20} /></div>
+        </motion.div>
+
+        <motion.div className="bento-card col-span-3 stat-card purple" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <div className="stat-icon purple"><Clock size={24} /></div>
           <div>
-            <div className="stat-value">{student.required_hours - hoursRendered > 0 ? (student.required_hours - hoursRendered).toFixed(1) : 0}h</div>
+            <div className="stat-value" style={{ fontSize: '2.5rem' }}>{student.required_hours - hoursRendered > 0 ? (student.required_hours - hoursRendered).toFixed(1) : 0}h</div>
             <div className="stat-label">Hours Remaining</div>
           </div>
-        </div>
-        <div className="stat-card green animate-fade-in-up delay-300">
-          <div className="stat-icon green"><Award size={20} /></div>
+        </motion.div>
+
+        <motion.div className="bento-card col-span-3 stat-card green" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <div className="stat-icon green"><Award size={24} /></div>
           <div>
-            <div className="stat-value">{latestEval ? `${latestEval.total_score}%` : 'N/A'}</div>
+            <div className="stat-value" style={{ fontSize: '2.5rem' }}>{latestEval ? `${latestEval.total_score}%` : 'N/A'}</div>
             <div className="stat-label">Latest Score</div>
           </div>
-        </div>
-        <div className="stat-card orange animate-fade-in-up delay-400">
-          <div className="stat-icon orange"><Bell size={20} /></div>
+        </motion.div>
+
+        <motion.div className="bento-card col-span-3 stat-card orange" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+          <div className="stat-icon orange"><Bell size={24} /></div>
           <div>
-            <div className="stat-value">{unreadNotifs.length}</div>
+            <div className="stat-value" style={{ fontSize: '2.5rem' }}>{unreadNotifs.length}</div>
             <div className="stat-label">Notifications</div>
           </div>
-        </div>
-      </div>
+        </motion.div>
 
-      <div className="grid-2" style={{ gap: '20px' }}>
-        <div className="card">
+        <motion.div className="bento-card col-span-8" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }}>
           <div className="card-header">
             <div>
-              <div className="card-title">OJT Progress</div>
+              <div className="card-title" style={{ fontSize: '1.25rem' }}>OJT Progress</div>
               <div className="card-subtitle">{company?.company_name || 'No placement yet'}</div>
             </div>
             <span className={`badge ${placement?.status === 'ongoing' ? 'badge-ongoing' : 'badge-completed'}`}>
@@ -328,8 +342,8 @@ function DashboardView({ student, placement, company, hoursRendered, notificatio
           {placement ? (
             <>
               <ProgressBar value={hoursRendered} max={student.required_hours} label="OJT Hours Completion" />
-              <div className="divider" />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+              <div className="divider" style={{ margin: '24px 0', borderColor: 'var(--color-border)' }} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 <div><div style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Start Date</div>{placement.start_date}</div>
                 <div><div style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>End Date</div>{placement.end_date}</div>
                 <div><div style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Company</div>{company?.company_name}</div>
@@ -339,43 +353,47 @@ function DashboardView({ student, placement, company, hoursRendered, notificatio
           ) : (
             <div className="empty-state"><p>No active placement found.</p></div>
           )}
-        </div>
+        </motion.div>
 
-        <div className="card">
+        <motion.div className="bento-card col-span-4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 }}>
           <div className="card-header">
             <div className="card-title">Announcements</div>
           </div>
-          {announcements.map(a => (
-            <div key={a.announcement_id} className="announcement-card">
-              <div className="announcement-title">{a.title}</div>
-              <div className="announcement-content">{a.content}</div>
-              <div className="announcement-date">{new Date(a.created_at).toLocaleDateString()}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {announcements.map(a => (
+              <div key={a.announcement_id} className="announcement-card" style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px' }}>
+                <div className="announcement-title" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{a.title}</div>
+                <div className="announcement-content" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '8px 0' }}>{a.content}</div>
+                <div className="announcement-date" style={{ fontSize: '0.7rem', color: 'var(--text-accent)' }}>{new Date(a.created_at).toLocaleDateString()}</div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
 
-      {/* Notifications */}
-      <div className="card" style={{ marginTop: '20px' }}>
-        <div className="card-header">
-          <div className="card-title">Notifications</div>
-          {unreadNotifs.length > 0 && <span className="badge badge-pending">{unreadNotifs.length} new</span>}
-        </div>
-        {notifications.length === 0 ? (
-          <div className="empty-state"><p>No notifications yet.</p></div>
-        ) : (
-          notifications.map(n => (
-            <div key={n.notification_id} className={`notif-item ${n.is_read ? '' : 'unread'}`}>
-              <div style={{ marginTop: '2px', color: n.type === 'approval' ? 'var(--status-approved)' : n.type === 'rejection' ? 'var(--status-rejected)' : 'var(--text-accent)' }}>
-                {n.type === 'approval' ? <CheckCircle2 size={16} /> : n.type === 'rejection' ? <XCircle size={16} /> : <Bell size={16} />}
-              </div>
-              <div>
-                <div className="notif-message">{n.message}</div>
-                <div className="notif-time">{new Date(n.created_at).toLocaleString()}</div>
-              </div>
-            </div>
-          ))
-        )}
+        {/* Notifications */}
+        <motion.div className="bento-card col-span-12" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
+          <div className="card-header">
+            <div className="card-title">Recent Notifications</div>
+            {unreadNotifs.length > 0 && <span className="badge badge-pending">{unreadNotifs.length} new</span>}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+            {notifications.length === 0 ? (
+              <div className="empty-state" style={{ gridColumn: '1 / -1' }}><p>No notifications yet.</p></div>
+            ) : (
+              notifications.map(n => (
+                <div key={n.notification_id} className={`notif-item ${n.is_read ? '' : 'unread'}`} style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                  <div style={{ color: n.type === 'approval' ? 'var(--status-approved)' : n.type === 'rejection' ? 'var(--status-rejected)' : 'var(--text-accent)' }}>
+                    {n.type === 'approval' ? <CheckCircle2 size={18} /> : n.type === 'rejection' ? <XCircle size={18} /> : <Bell size={18} />}
+                  </div>
+                  <div>
+                    <div className="notif-message" style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{n.message}</div>
+                    <div className="notif-time" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>{new Date(n.created_at).toLocaleString()}</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </motion.div>
       </div>
     </>
   );
@@ -492,7 +510,7 @@ function CompaniesView({ companies, applications, onApply, student }) {
                 )}
 
                 {/* Company Photo */}
-                <div style={{ height: '120px', borderRadius: '12px 12px 0 0', background: `url(${c.photo_url || '/company1.png'}) center/cover no-repeat`, marginBottom: '12px', marginTop: '-16px', marginLeft: '-16px', paddingRight: '32px', width: 'calc(100% + 32px)' }} />
+                <div style={{ height: '120px', borderRadius: '12px 12px 0 0', background: `url(${c.photo_url || ''}) center/cover no-repeat`, backgroundColor: '#1e293b', marginBottom: '12px', marginTop: '-16px', marginLeft: '-16px', paddingRight: '32px', width: 'calc(100% + 32px)' }} />
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div>
@@ -798,27 +816,27 @@ function ProfileView({ student, currentUser }) {
           <div style={{ display: 'flex', gap: '16px' }}>
             <div className="form-group" style={{ flex: 1 }}>
               <label className="form-label">First Name</label>
-              <input type="text" className="form-input" required value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} />
+              <input type="text" className="form-input" required value={formData.first_name} onChange={e => setFormData({ ...formData, first_name: e.target.value })} />
             </div>
             <div className="form-group" style={{ flex: 1 }}>
               <label className="form-label">Last Name</label>
-              <input type="text" className="form-input" required value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} />
+              <input type="text" className="form-input" required value={formData.last_name} onChange={e => setFormData({ ...formData, last_name: e.target.value })} />
             </div>
           </div>
 
           <div className="form-group">
             <label className="form-label">Course</label>
-            <input type="text" className="form-input" required value={formData.course} onChange={e => setFormData({...formData, course: e.target.value})} />
+            <input type="text" className="form-input" required value={formData.course} onChange={e => setFormData({ ...formData, course: e.target.value })} />
           </div>
 
           <div className="form-group">
             <label className="form-label">Year and Section</label>
-            <input type="text" className="form-input" required value={formData.year_section} onChange={e => setFormData({...formData, year_section: e.target.value})} />
+            <input type="text" className="form-input" required value={formData.year_section} onChange={e => setFormData({ ...formData, year_section: e.target.value })} />
           </div>
 
           <div className="form-group">
             <label className="form-label">Gender</label>
-            <select className="form-input" required value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})}>
+            <select className="form-input" required value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })}>
               <option value="">Select Gender</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
@@ -831,12 +849,12 @@ function ProfileView({ student, currentUser }) {
 
           <div className="form-group">
             <label className="form-label">Email Address</label>
-            <input type="email" className="form-input" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+            <input type="email" className="form-input" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
           </div>
 
           <div className="form-group">
             <label className="form-label">Change Password</label>
-            <input type="password" className="form-input" placeholder="Leave blank to keep current password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+            <input type="password" className="form-input" placeholder="Leave blank to keep current password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
           </div>
 
           <div style={{ marginTop: '24px' }}>

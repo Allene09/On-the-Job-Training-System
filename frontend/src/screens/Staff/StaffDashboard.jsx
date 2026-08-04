@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import API_BASE_URL from '../../config/api';
+import API_BASE_URL, { fetchWithAuth } from '../../config/api';
 import {
   LayoutDashboard, Users, FileCheck, Briefcase, ClipboardList,
   Star, CheckCircle2, XCircle, AlertCircle, Bell, Clock, TrendingUp, Building2, Eye, EyeOff
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 function StatusBadge({ status }) {
   const map = {
@@ -26,7 +27,8 @@ export default function StaffDashboard({ activePage, currentUser }) {
   const [applications, setApplications] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
   const [showEvalModal, setShowEvalModal] = useState(false);
-  const [evalForm, setEvalForm] = useState({ placement_id: 1, evaluator_name: 'Prof. Alejandro Rivera', attendance: '', work: '', attitude: '', remarks: '' });
+  const [evalForm, setEvalForm] = useState({ placement_id: '', evaluator_name: 'Prof. Alejandro Rivera', attendance: '', work: '', attitude: '', remarks: '' });
+  const [reqFilter, setReqFilter] = useState('all');
 
   useEffect(() => {
     setSubmissions(mockData.student_requirements || []);
@@ -39,7 +41,7 @@ export default function StaffDashboard({ activePage, currentUser }) {
 
   const reviewRequirement = async (submission_id, newStatus) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/staff/requirements/review`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/staff/requirements/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -66,7 +68,7 @@ export default function StaffDashboard({ activePage, currentUser }) {
 
   const approveApplication = async (application_id) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/staff/applications/approve`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/staff/applications/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -91,7 +93,7 @@ export default function StaffDashboard({ activePage, currentUser }) {
 
   const rejectApplication = async (application_id) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/staff/applications/reject`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/staff/applications/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ application_id })
@@ -110,16 +112,25 @@ export default function StaffDashboard({ activePage, currentUser }) {
   };
 
   const submitEvaluation = async () => {
+    const att = parseFloat(evalForm.attendance || 0);
+    const work = parseFloat(evalForm.work || 0);
+    const attitude = parseFloat(evalForm.attitude || 0);
+    
+    if (att > 35 || work > 35 || attitude > 30) {
+      alert("Scores exceed maximum allowed values (Attendance: 35, Work: 35, Attitude: 30)");
+      return;
+    }
+    
     try {
-      const res = await fetch(`${API_BASE_URL}/staff/evaluation/submit`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/staff/evaluation/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           placement_id: parseInt(evalForm.placement_id),
           evaluator_name: evalForm.evaluator_name,
-          attendance_score: parseFloat(evalForm.attendance || 0),
-          work_quality_score: parseFloat(evalForm.work || 0),
-          attitude_score: parseFloat(evalForm.attitude || 0),
+          attendance_score: att,
+          work_quality_score: work,
+          attitude_score: attitude,
           remarks: evalForm.remarks
         })
       });
@@ -149,19 +160,19 @@ export default function StaffDashboard({ activePage, currentUser }) {
   const enrichedSubmissions = submissions.map(s => {
     const student = mockData.students.find(st => st.student_id === s.student_id);
     const reqType = mockData.requirement_types.find(r => r.requirement_id === s.requirement_id);
-    return { ...s, student_name: student?.full_name || '—', student_number: student?.student_number || '—', requirement_name: reqType?.name || '—' };
+    return { ...s, student_name: student?.full_name || s.student_name || '—', student_number: student?.student_number || s.student_number || '—', requirement_name: reqType?.name || s.requirement_name || '—' };
   });
 
   const enrichedApps = applications.map(a => {
-    const student = mockData.students.find(s => s.student_id === a.student_id);
+    const student = mockData.students.find(s => s.student_id === a.student_id || s.user_id === a.student_id);
     const company = mockData.companies.find(c => c.company_id === a.company_id);
-    return { ...a, student_name: student?.full_name || '—', student_number: student?.student_number || '—', course: student?.course || '—', company_name: company?.company_name || '—', industry: company?.industry || '—' };
+    return { ...a, student_name: student?.full_name || a.student_name || '—', student_number: student?.student_number || a.student_number || '—', course: student?.course || a.course || '—', company_name: company?.company_name || a.company_name || '—', industry: company?.industry || a.industry || '—' };
   });
 
   const pages = {
     dashboard: <StaffOverview pendingSubmissions={pendingSubmissions} pendingApps={pendingApps} evaluations={evaluations} announcements={mockData.announcements} notifications={mockData.notifications.filter(n => n.user_id === currentUser?.user_id)} />,
     profiling: <StudentProfilingView />,
-    requirements: <ReviewRequirementsView enrichedSubmissions={enrichedSubmissions} onReview={reviewRequirement} />,
+    requirements: <ReviewRequirementsView enrichedSubmissions={enrichedSubmissions} onReview={reviewRequirement} filter={reqFilter} setFilter={setReqFilter} />,
     applications: <ApplicationsView enrichedApps={enrichedApps} onApprove={approveApplication} onReject={rejectApplication} />,
     attendance: <AttendanceMonitorView placements={mockData.ojt_placements} students={mockData.students} companies={mockData.companies} attendance={mockData.attendance} />,
     evaluations: <EvaluationsView evaluations={evaluations} placements={mockData.ojt_placements} students={mockData.students} onAddEval={() => setShowEvalModal(true)} />,
@@ -176,6 +187,16 @@ export default function StaffDashboard({ activePage, currentUser }) {
             <div className="modal-header">
               <h2 className="modal-title">Submit Student Evaluation</h2>
               <button className="btn btn-ghost btn-sm" onClick={() => setShowEvalModal(false)}>✕</button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Student Placement</label>
+              <select className="form-input" value={evalForm.placement_id} onChange={e => setEvalForm({ ...evalForm, placement_id: e.target.value })}>
+                <option value="">Select a student placement</option>
+                {mockData.ojt_placements.map(p => {
+                  const s = mockData.students.find(st => st.student_id === p.student_id);
+                  return <option key={p.placement_id} value={p.placement_id}>{s ? s.full_name : `Placement #${p.placement_id}`}</option>
+                })}
+              </select>
             </div>
             <div className="form-group">
               <label className="form-label">Evaluator Name</label>
@@ -202,7 +223,10 @@ export default function StaffDashboard({ activePage, currentUser }) {
               <label className="form-label">Remarks</label>
               <textarea className="form-textarea" placeholder="Optional remarks..." value={evalForm.remarks} onChange={e => setEvalForm({ ...evalForm, remarks: e.target.value })} style={{ minHeight: '80px' }} />
             </div>
-            <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={submitEvaluation}>
+            <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={() => {
+              if (!evalForm.placement_id) return alert('Please select a student placement');
+              submitEvaluation();
+            }}>
               <Star size={16} /> Save Evaluation
             </button>
           </div>
@@ -220,39 +244,54 @@ function StaffOverview({ pendingSubmissions, pendingApps, evaluations, announcem
         <h1>Coordinator Dashboard</h1>
         <p>Monitor students, review submissions, and manage OJT placements</p>
       </div>
-      <div className="stat-grid">
-        <div className="stat-card cyan animate-fade-in-up delay-100"><div className="stat-icon cyan"><FileCheck size={20} /></div><div><div className="stat-value">{pendingSubmissions.length}</div><div className="stat-label">Pending Requirements</div></div></div>
-        <div className="stat-card purple animate-fade-in-up delay-200"><div className="stat-icon purple"><Briefcase size={20} /></div><div><div className="stat-value">{pendingApps.length}</div><div className="stat-label">Pending Applications</div></div></div>
-        <div className="stat-card green animate-fade-in-up delay-300"><div className="stat-icon green"><Star size={20} /></div><div><div className="stat-value">{evaluations.length}</div><div className="stat-label">Evaluations Done</div></div></div>
-        <div className="stat-card orange animate-fade-in-up delay-400"><div className="stat-icon orange"><Bell size={20} /></div><div><div className="stat-value">{notifications.filter(n => !n.is_read).length}</div><div className="stat-label">Unread Alerts</div></div></div>
-      </div>
-      <div className="grid-2" style={{ gap: '20px' }}>
-        <div className="card animate-fade-in-up delay-200">
+      <div className="bento-grid">
+        <motion.div className="bento-card col-span-3 stat-card cyan" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <div className="stat-icon cyan"><FileCheck size={24} /></div>
+          <div><div className="stat-value" style={{ fontSize: '2.5rem' }}>{pendingSubmissions.length}</div><div className="stat-label">Pending Requirements</div></div>
+        </motion.div>
+        <motion.div className="bento-card col-span-3 stat-card purple" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <div className="stat-icon purple"><Briefcase size={24} /></div>
+          <div><div className="stat-value" style={{ fontSize: '2.5rem' }}>{pendingApps.length}</div><div className="stat-label">Pending Applications</div></div>
+        </motion.div>
+        <motion.div className="bento-card col-span-3 stat-card green" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <div className="stat-icon green"><Star size={24} /></div>
+          <div><div className="stat-value" style={{ fontSize: '2.5rem' }}>{evaluations.length}</div><div className="stat-label">Evaluations Done</div></div>
+        </motion.div>
+        <motion.div className="bento-card col-span-3 stat-card orange" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+          <div className="stat-icon orange"><Bell size={24} /></div>
+          <div><div className="stat-value" style={{ fontSize: '2.5rem' }}>{notifications.filter(n => !n.is_read).length}</div><div className="stat-label">Unread Alerts</div></div>
+        </motion.div>
+
+        <motion.div className="bento-card col-span-6" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }}>
           <div className="card-header"><div className="card-title">Recent Notifications</div></div>
-          {notifications.length === 0 ? <div className="empty-state"><p>No notifications.</p></div> : notifications.map(n => (
-            <div key={n.notification_id} className={`notif-item ${n.is_read ? '' : 'unread'}`}>
-              <Bell size={16} color="var(--text-accent)" style={{ marginTop: 2 }} />
-              <div><div className="notif-message">{n.message}</div><div className="notif-time">{new Date(n.created_at).toLocaleString()}</div></div>
-            </div>
-          ))}
-        </div>
-        <div className="card animate-fade-in-up delay-500">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {notifications.length === 0 ? <div className="empty-state"><p>No notifications.</p></div> : notifications.map(n => (
+              <div key={n.notification_id} className={`notif-item ${n.is_read ? '' : 'unread'}`} style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                <Bell size={18} color="var(--text-accent)" style={{ marginTop: 2 }} />
+                <div><div className="notif-message" style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{n.message}</div><div className="notif-time" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>{new Date(n.created_at).toLocaleString()}</div></div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        <motion.div className="bento-card col-span-6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 }}>
           <div className="card-header"><div className="card-title">Announcements</div></div>
-          {announcements.map(a => (
-            <div key={a.announcement_id} className="announcement-card">
-              <div className="announcement-title">{a.title}</div>
-              <div className="announcement-content">{a.content}</div>
-              <div className="announcement-date">{new Date(a.created_at).toLocaleDateString()}</div>
-            </div>
-          ))}
-        </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {announcements.map(a => (
+              <div key={a.announcement_id} className="announcement-card" style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px' }}>
+                <div className="announcement-title" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{a.title}</div>
+                <div className="announcement-content" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '8px 0' }}>{a.content}</div>
+                <div className="announcement-date" style={{ fontSize: '0.7rem', color: 'var(--text-accent)' }}>{new Date(a.created_at).toLocaleDateString()}</div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
       </div>
     </>
   );
 }
 
-function ReviewRequirementsView({ enrichedSubmissions, onReview }) {
-  const [filter, setFilter] = useState('all');
+function ReviewRequirementsView({ enrichedSubmissions, onReview, filter, setFilter }) {
   const filtered = filter === 'all' ? enrichedSubmissions : enrichedSubmissions.filter(s => s.status === filter);
   return (
     <>
@@ -420,7 +459,9 @@ function EvaluationsView({ evaluations, placements, students, onAddEval }) {
 
 function StudentProfilingView() {
   const [formData, setFormData] = useState({
+    student_number: '',
     first_name: '',
+    middle_name: '',
     last_name: '',
     course: '',
     year_section: '',
@@ -437,7 +478,7 @@ function StudentProfilingView() {
     const first = updatedForm.first_name.replace(/[^a-zA-Z]/g, '').toLowerCase();
     const last = updatedForm.last_name.replace(/[^a-zA-Z]/g, '').toLowerCase();
     const autoGen = first && last ? `${first}${last}` : '';
-    
+
     setFormData({
       ...updatedForm,
       email: autoGen ? `${autoGen}@gmail.com` : updatedForm.email,
@@ -457,16 +498,17 @@ function StudentProfilingView() {
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
-          full_name: `${formData.first_name} ${formData.last_name}`,
+          full_name: `${formData.first_name} ${formData.middle_name} ${formData.last_name}`.replace(/\s+/g, ' ').trim(),
           gender: formData.gender,
           course: formData.course,
-          year_section: formData.year_section
+          year_section: formData.year_section,
+          student_number: formData.student_number
         })
       });
       const data = await res.json();
       if (data.success) {
         setMsg({ type: 'success', text: `Account created successfully! Admin approval is pending. (Email: ${formData.email})` });
-        setFormData({ first_name: '', last_name: '', course: '', year_section: '', gender: '', email: '', password: '' });
+        setFormData({ student_number: '', first_name: '', middle_name: '', last_name: '', course: '', year_section: '', gender: '', email: '', password: '' });
       } else {
         setMsg({ type: 'error', text: data.message || 'Registration failed' });
       }
@@ -484,30 +526,39 @@ function StudentProfilingView() {
       </div>
       <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="form-group">
+            <label className="form-label">Student ID Number</label>
+            <input type="text" className="form-input" required value={formData.student_number} onChange={e => setFormData({ ...formData, student_number: e.target.value })} placeholder="e.g. SN-2023-12345" />
+          </div>
+
           <div style={{ display: 'flex', gap: '16px' }}>
             <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
               <label className="form-label">First Name</label>
               <input type="text" className="form-input" required value={formData.first_name} onChange={e => handleNameChange('first_name', e.target.value)} />
             </div>
             <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+              <label className="form-label">Middle Name</label>
+              <input type="text" className="form-input" value={formData.middle_name} onChange={e => handleNameChange('middle_name', e.target.value)} placeholder="(Optional)" />
+            </div>
+            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
               <label className="form-label">Last Name</label>
               <input type="text" className="form-input" required value={formData.last_name} onChange={e => handleNameChange('last_name', e.target.value)} />
             </div>
           </div>
-          
+
           <div className="form-group">
             <label className="form-label">Course</label>
-            <input type="text" className="form-input" required value={formData.course} onChange={e => setFormData({...formData, course: e.target.value})} />
+            <input type="text" className="form-input" required value={formData.course} onChange={e => setFormData({ ...formData, course: e.target.value })} />
           </div>
 
           <div className="form-group">
             <label className="form-label">Year and Section</label>
-            <input type="text" className="form-input" required value={formData.year_section} onChange={e => setFormData({...formData, year_section: e.target.value})} placeholder="e.g. 4th Year - Section A" />
+            <input type="text" className="form-input" required value={formData.year_section} onChange={e => setFormData({ ...formData, year_section: e.target.value })} placeholder="e.g. 4th Year - Section A" />
           </div>
 
           <div className="form-group">
             <label className="form-label">Gender</label>
-            <select className="form-input" required value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})}>
+            <select className="form-input" required value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })}>
               <option value="">Select Gender</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
@@ -518,12 +569,12 @@ function StudentProfilingView() {
           <div style={{ display: 'flex', gap: '16px' }}>
             <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
               <label className="form-label">Email</label>
-              <input type="email" className="form-input" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="e.g. jdelacruz@busi.edu.ph" />
+              <input type="email" className="form-input" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="e.g. jdelacruz@busi.edu.ph" />
             </div>
             <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
               <label className="form-label">Password</label>
               <div style={{ position: 'relative' }}>
-                <input type={showPassword ? "text" : "password"} className="form-input" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} style={{ paddingRight: '40px' }} />
+                <input type={showPassword ? "text" : "password"} className="form-input" required value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} style={{ paddingRight: '40px' }} />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -532,9 +583,9 @@ function StudentProfilingView() {
           </div>
 
           {msg.text && (
-            <div style={{ 
-              padding: '12px', 
-              borderRadius: '8px', 
+            <div style={{
+              padding: '12px',
+              borderRadius: '8px',
               fontSize: '0.9rem',
               backgroundColor: msg.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(244, 63, 94, 0.1)',
               color: msg.type === 'success' ? '#10b981' : '#f43f5e',
@@ -616,20 +667,20 @@ function StaffProfileView({ currentUser }) {
           <div style={{ display: 'flex', gap: '16px' }}>
             <div className="form-group" style={{ flex: 1 }}>
               <label className="form-label">First Name</label>
-              <input type="text" className="form-input" required value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} />
+              <input type="text" className="form-input" required value={formData.first_name} onChange={e => setFormData({ ...formData, first_name: e.target.value })} />
             </div>
             <div className="form-group" style={{ flex: 1 }}>
               <label className="form-label">Last Name</label>
-              <input type="text" className="form-input" required value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} />
+              <input type="text" className="form-input" required value={formData.last_name} onChange={e => setFormData({ ...formData, last_name: e.target.value })} />
             </div>
           </div>
           <div className="form-group">
             <label className="form-label">Email Address</label>
-            <input type="email" className="form-input" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+            <input type="email" className="form-input" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
           </div>
           <div className="form-group">
             <label className="form-label">Change Password</label>
-            <input type="password" className="form-input" placeholder="Leave blank to keep current password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+            <input type="password" className="form-input" placeholder="Leave blank to keep current password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
           </div>
           <div style={{ marginTop: '24px' }}>
             <button type="submit" className="btn btn-primary">Save Changes</button>

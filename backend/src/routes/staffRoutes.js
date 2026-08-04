@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const staffController = require('../controllers/staffController');
+const { verifyToken, isStaff } = require('../middleware/authMiddleware');
 
+router.use(verifyToken, isStaff);
 router.get('/dashboard', staffController.getDashboardData);
 router.get('/students', staffController.getStudentProfiles);
 router.get('/requirements/pending', staffController.getPendingRequirements);

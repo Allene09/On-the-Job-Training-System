@@ -1,23 +1,10 @@
-const { pool } = require('../config/db');
+const AttendanceModel = require('../models/AttendanceModel');
 
 exports.getPlacementAttendance = async (req, res) => {
   try {
     const { placement_id } = req.params;
-    const [records] = await pool.query('SELECT * FROM attendance WHERE placement_id = ?', [placement_id]);
-    
-    // Simulate sp_GetStudentProgress logic
-    let progress = null;
-    const [placements] = await pool.query('SELECT required_hours, total_hours_rendered, status FROM ojt_placements WHERE placement_id = ?', [placement_id]);
-    if (placements.length > 0) {
-      const p = placements[0];
-      progress = {
-        placement_id: parseInt(placement_id),
-        required_hours: p.required_hours,
-        total_hours_rendered: p.total_hours_rendered,
-        progress_percent: Math.min(parseFloat(((p.total_hours_rendered / p.required_hours) * 100).toFixed(2)), 100),
-        status: p.status
-      };
-    }
+    const records = await AttendanceModel.getByPlacementId(placement_id);
+    const progress = await AttendanceModel.getProgress(placement_id);
 
     return res.json({ success: true, data: { records, progress } });
   } catch (error) {
@@ -28,19 +15,23 @@ exports.getPlacementAttendance = async (req, res) => {
 
 exports.recordAttendance = async (req, res) => {
   try {
-    const { placement_id, log_date, time_in, time_out } = req.body;
-    await pool.query('CALL sp_RecordAttendance(?, ?, ?, ?)', [placement_id, log_date, time_in, time_out]);
+    const { placement_id, log_date, time_in, time_out, hours_rendered, remarks } = req.body;
     
-    // Auto-complete placement if hours are met
-    await pool.query('CALL sp_CheckAndCompletePlacement(?)', [placement_id]);
+    const placement = await AttendanceModel.getPlacementById(placement_id);
+    if (!placement) {
+      return res.status(404).json({ success: false, message: 'Placement not found' });
+    }
 
-    // Fetch the newly inserted record to return
-    const [newRecord] = await pool.query('SELECT * FROM attendance WHERE placement_id = ? AND log_date = ? ORDER BY attendance_id DESC LIMIT 1', [placement_id, log_date]);
+    if (placement.status !== 'ongoing') {
+      return res.status(400).json({ success: false, message: 'Cannot add attendance to a completed or inactive placement.' });
+    }
+
+    const newRecord = await AttendanceModel.addRecord(placement_id, log_date, time_in, time_out, parseFloat(hours_rendered), remarks || null);
 
     return res.status(201).json({
       success: true,
-      message: "Attendance recorded & total hours auto-calculated (SP executed)",
-      data: newRecord[0]
+      message: "Attendance recorded",
+      data: newRecord
     });
   } catch (error) {
     console.error(error);

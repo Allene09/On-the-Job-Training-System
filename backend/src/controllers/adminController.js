@@ -1,9 +1,8 @@
-const { pool } = require('../config/db');
+const AdminModel = require('../models/AdminModel');
 
 exports.getAdminStats = async (req, res) => {
   try {
-    const [rows] = await pool.query('CALL sp_GetAdminDashboardStats()');
-    const stats = rows[0][0];
+    const stats = await AdminModel.getDashboardStats();
 
     return res.json({
       success: true,
@@ -26,18 +25,25 @@ exports.getAdminStats = async (req, res) => {
 
 exports.getUsers = async (req, res) => {
   try {
-    const [rows] = await pool.query('CALL sp_SearchUsers(NULL, NULL)');
-    const users = rows[0].map(u => ({
+    const usersData = await AdminModel.getUsers();
+    const users = usersData.map(u => ({
       user_id: u.user_id,
+      student_id: u.student_id,
+      staff_id: u.staff_id,
       email: u.email,
       role: u.role,
       status: u.status,
       requires_password_change: u.requires_password_change,
       created_at: u.created_at,
+      full_name: u.student_name || u.staff_name || u.admin_name,
+      student_number: u.student_number,
+      employee_id: u.employee_id,
+      course: u.course,
       details: {
         full_name: u.student_name || u.staff_name || u.admin_name,
         student_number: u.student_number,
-        employee_id: u.employee_id
+        employee_id: u.employee_id,
+        course: u.course
       }
     }));
     return res.json({ success: true, data: users });
@@ -49,16 +55,8 @@ exports.getUsers = async (req, res) => {
 
 exports.createRequirementType = async (req, res) => {
   try {
-    const { name, description, is_required, deadline } = req.body;
-    const isReq = is_required !== undefined ? is_required : true;
-    const dl = deadline || "2026-09-30";
-    
-    const [result] = await pool.query(
-      'INSERT INTO requirement_types (name, description, is_required, deadline) VALUES (?, ?, ?, ?)',
-      [name, description, isReq, dl]
-    );
-
-    return res.status(201).json({ success: true, message: "Requirement type added", data: { requirement_id: result.insertId, name, description, is_required: isReq, deadline: dl } });
+    const result = await AdminModel.createRequirementType(req.body);
+    return res.status(201).json({ success: true, message: "Requirement type added", data: { requirement_id: result.insertId, name: req.body.name, description: req.body.description, is_required: result.isReq, deadline: result.dl } });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, message: 'Server error' });
@@ -67,8 +65,8 @@ exports.createRequirementType = async (req, res) => {
 
 exports.getPendingAccounts = async (req, res) => {
   try {
-    const [rows] = await pool.query('CALL sp_GetPendingAccounts()');
-    const pendingUsers = rows[0].map(u => ({
+    const pendingData = await AdminModel.getPendingAccounts();
+    const pendingUsers = pendingData.map(u => ({
       user_id: u.user_id,
       email: u.email,
       role: u.role,
@@ -91,7 +89,7 @@ exports.getPendingAccounts = async (req, res) => {
 exports.approveAccount = async (req, res) => {
   try {
     const { user_id } = req.body;
-    await pool.query('CALL sp_ApproveStudentAccount(?)', [user_id]);
+    await AdminModel.approveAccount(user_id);
     
     // Simulate sending email
     console.log(`[SIMULATED EMAIL] Account approved! Email sent to user_id ${user_id} with default password.`);
@@ -105,59 +103,23 @@ exports.approveAccount = async (req, res) => {
 
 exports.createUser = async (req, res) => {
   try {
-    const {
-      role,
-      full_name,
-      email,
-      password,
-      student_number,
-      course,
-      year_level,
-      gender,
-      employee_id,
-      department
-    } = req.body;
+    const result = await AdminModel.createUser(req.body);
 
-    if (!role || !full_name || !email || !password) {
-      return res.status(400).json({ success: false, message: 'role, full_name, email, and password are required' });
-    }
-
-    if (role === 'student') {
-      const resolvedStudentNumber = student_number || `SN-${Date.now()}`;
-      if (!course || !year_level) {
-        return res.status(400).json({ success: false, message: 'course and year_level are required for students' });
+    return res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      data: {
+        user_id: result.user.user_id,
+        email: result.user.email,
+        role: result.user.role,
+        status: result.user.status,
+        details: result.profile
       }
-
-      await pool.query(
-        'CALL sp_RegisterStudent(?, ?, ?, ?, ?, ?, ?)',
-        [email, password, resolvedStudentNumber, full_name, gender || null, course, year_level]
-      );
-
-      const [users] = await pool.query('SELECT * FROM users WHERE email = ? ORDER BY user_id DESC LIMIT 1', [email]);
-      const user = users[0];
-      const [students] = await pool.query('SELECT * FROM students WHERE user_id = ?', [user.user_id]);
-
-      return res.status(201).json({ success: true, message: 'Student account created successfully', data: { ...user, profile: students[0] || null } });
-    }
-
-    if (role === 'staff') {
-      await pool.query(
-        'CALL sp_RegisterStaff(?, ?, ?, ?, ?)',
-        [email, password, full_name, employee_id || null, department || null]
-      );
-
-      const [users] = await pool.query('SELECT * FROM users WHERE email = ? ORDER BY user_id DESC LIMIT 1', [email]);
-      const user = users[0];
-      const [staff] = await pool.query('SELECT * FROM staff WHERE user_id = ?', [user.user_id]);
-
-      return res.status(201).json({ success: true, message: 'Staff account created successfully', data: { ...user, profile: staff[0] || null } });
-    }
-
-    return res.status(400).json({ success: false, message: 'Unsupported role' });
+    });
   } catch (error) {
     console.error(error);
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ success: false, message: 'Email already exists' });
+    if (error.message === "Email already registered") {
+      return res.status(400).json({ success: false, message: error.message });
     }
     return res.status(500).json({ success: false, message: 'Server error' });
   }
@@ -165,10 +127,8 @@ exports.createUser = async (req, res) => {
 
 exports.getAnnouncements = async (req, res) => {
   try {
-    const [announcements] = await pool.query(
-      'SELECT * FROM announcements ORDER BY created_at DESC'
-    );
-    return res.json({ success: true, data: announcements });
+    const rows = await AdminModel.getAnnouncements();
+    return res.json({ success: true, data: rows });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, message: 'Server error' });
@@ -178,18 +138,8 @@ exports.getAnnouncements = async (req, res) => {
 exports.getNotifications = async (req, res) => {
   try {
     const { user_id } = req.query;
-    const params = [];
-    let query = 'SELECT * FROM notifications';
-
-    if (user_id) {
-      query += ' WHERE user_id = ?';
-      params.push(user_id);
-    }
-
-    query += ' ORDER BY created_at DESC';
-
-    const [notifications] = await pool.query(query, params);
-    return res.json({ success: true, data: notifications });
+    const rows = await AdminModel.getNotifications(user_id);
+    return res.json({ success: true, data: rows });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, message: 'Server error' });
