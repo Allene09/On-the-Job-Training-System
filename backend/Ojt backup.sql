@@ -261,6 +261,9 @@ CREATE TABLE `students` (
   `user_id` int(11) NOT NULL,
   `student_number` varchar(30) NOT NULL,
   `full_name` varchar(150) NOT NULL,
+  `first_name` varchar(50) DEFAULT NULL,
+  `middle_name` varchar(50) DEFAULT NULL,
+  `last_name` varchar(50) DEFAULT NULL,
   `gender` varchar(20) DEFAULT NULL,
   `course` varchar(100) DEFAULT NULL,
   `year_level` varchar(50) DEFAULT NULL,
@@ -276,7 +279,7 @@ CREATE TABLE `students` (
 
 /*Data for the table `students` */
 
-insert  into `students`(`student_id`,`user_id`,`student_number`,`full_name`,`gender`,`course`,`year_level`,`contact_number`,`address`,`required_hours`,`profile_photo`) values (1,2,'2026-00001','Mark Allene Cayda','Male','BS Computer Science','4th Year','09123456789','Zamora, Bilar',486,NULL),(2,4,'SN-1785501194123','Kevin  Esto','Male','BSCS','4-B',NULL,NULL,486,NULL),(3,6,'SN-1785560802545','James  Ronolo','Male','BSCS','3B',NULL,NULL,486,NULL),(4,7,'SN-1785761032609','Zach  Lumantas','Male','BSCS','4B',NULL,NULL,486,NULL);
+insert  into `students`(`student_id`,`user_id`,`student_number`,`full_name`,`first_name`,`middle_name`,`last_name`,`gender`,`course`,`year_level`,`contact_number`,`address`,`required_hours`,`profile_photo`) values (1,2,'2026-00001','Mark Allene Cayda',NULL,NULL,NULL,'Male','BS Computer Science','4th Year','09123456789','Zamora, Bilar',486,NULL),(2,4,'SN-1785501194123','Kevin  Esto',NULL,NULL,NULL,'Male','BSCS','4-B',NULL,NULL,486,NULL),(3,6,'SN-1785560802545','James  Ronolo',NULL,NULL,NULL,'Male','BSCS','3B',NULL,NULL,486,NULL),(4,7,'SN-1785761032609','Zach  Lumantas',NULL,NULL,NULL,'Male','BSCS','4B',NULL,NULL,486,NULL);
 
 /*Table structure for table `users` */
 
@@ -406,11 +409,12 @@ DELIMITER ;
 DELIMITER $$
 
 /*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_ApproveStudentAccount`(
-    IN p_user_id INT
+    IN p_user_id INT,
+    IN p_password_hash VARCHAR(255)
 )
 BEGIN
     UPDATE users
-    SET status = 'active'
+    SET status = 'active', password_hash = p_password_hash
     WHERE user_id = p_user_id;
 END */$$
 DELIMITER ;
@@ -615,10 +619,26 @@ DELIMITER $$
 
 /*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_GetPendingAccounts`()
 BEGIN
-    SELECT u.user_id, u.email, u.role, u.status, u.created_at, s.student_number, s.full_name, s.course, s.year_level
+    SELECT u.user_id, u.email, u.role, u.status, u.created_at, s.student_number, s.full_name, s.course, s.year_level, s.first_name, s.last_name
     FROM users u
     JOIN students s ON u.user_id = s.user_id
     WHERE u.status = 'pending_admin_approval';
+END */$$
+DELIMITER ;
+
+/* Procedure structure for procedure `sp_RejectStudentAccount` */
+
+/*!50003 DROP PROCEDURE IF EXISTS  `sp_RejectStudentAccount` */;
+
+DELIMITER $$
+
+/*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_RejectStudentAccount`(
+    IN p_user_id INT
+)
+BEGIN
+    UPDATE users
+    SET status = 'inactive'
+    WHERE user_id = p_user_id;
 END */$$
 DELIMITER ;
 
@@ -870,6 +890,9 @@ DELIMITER $$
     IN p_password_hash VARCHAR(255),
     IN p_student_number VARCHAR(30),
     IN p_full_name VARCHAR(150),
+    IN p_first_name VARCHAR(50),
+    IN p_middle_name VARCHAR(50),
+    IN p_last_name VARCHAR(50),
     IN p_gender VARCHAR(20),
     IN p_course VARCHAR(100),
     IN p_year_level VARCHAR(50)
@@ -879,8 +902,8 @@ BEGIN
     INSERT INTO users (email, password_hash, role, status, requires_password_change)
     VALUES (p_email, p_password_hash, 'student', 'pending_admin_approval', TRUE);
     SET new_user_id = LAST_INSERT_ID();
-    INSERT INTO students (user_id, student_number, full_name, gender, course, year_level)
-    VALUES (new_user_id, p_student_number, p_full_name, p_gender, p_course, p_year_level);
+    INSERT INTO students (user_id, student_number, full_name, first_name, middle_name, last_name, gender, course, year_level)
+    VALUES (new_user_id, p_student_number, p_full_name, p_first_name, p_middle_name, p_last_name, p_gender, p_course, p_year_level);
 END */$$
 DELIMITER ;
 

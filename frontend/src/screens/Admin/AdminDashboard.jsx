@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast';
 import API_BASE_URL, { fetchWithAuth } from '../../config/api';
 import {
   Users, Building2, FileText, BarChart3, Plus, Settings,
-  TrendingUp, Clock, CheckCircle2, XCircle, Bell, Search, AlertCircle, Eye, EyeOff
+  TrendingUp, Clock, CheckCircle2, XCircle, Bell, Search, AlertCircle, Eye, EyeOff, X
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -43,6 +43,13 @@ export default function AdminDashboard({ activePage }) {
   const [editCompanyForm, setEditCompanyForm] = useState(null);
   const [editCompanyPhotoFile, setEditCompanyPhotoFile] = useState(null);
   const [reqForm, setReqForm] = useState({ name: '', description: '', is_required: true, deadline: '' });
+  
+  const generateIdForRole = (role) => {
+    const year = new Date().getFullYear();
+    const random = Math.floor(100000 + Math.random() * 900000);
+    return role === 'staff' ? `EMP-${year}-${random}` : `${year}-${random}`;
+  };
+
   const [userForm, setUserForm] = useState({
     role: 'student',
     first_name: '',
@@ -50,25 +57,28 @@ export default function AdminDashboard({ activePage }) {
     last_name: '',
     email: '',
     password: '',
-    student_number: '',
+    student_number: generateIdForRole('student'),
     course: '',
     year_level: '',
     gender: '',
-    employee_id: '',
+    employee_id: generateIdForRole('staff'),
     department: ''
   });
   const [userFormError, setUserFormError] = useState('');
+  const [newlyCreatedAccount, setNewlyCreatedAccount] = useState(null);
 
   const handleNameChange = (field, value) => {
     const updatedForm = { ...userForm, [field]: value };
     const first = updatedForm.first_name.replace(/[^a-zA-Z]/g, '').toLowerCase();
     const last = updatedForm.last_name.replace(/[^a-zA-Z]/g, '').toLowerCase();
-    const autoGen = first && last ? `${first}${last}` : '';
+    const domain = updatedForm.role === 'staff' ? '@staff.edu.ph' : '@student.edu.ph';
+    const autoGenEmail = first && last ? `${first}${last}${domain}` : '';
+    const autoGenPass = first && last ? `${first}${last}123` : '';
 
     setUserForm({ 
       ...updatedForm,
-      email: autoGen ? `${autoGen}@gmail.com` : updatedForm.email,
-      password: autoGen ? `${autoGen}123` : updatedForm.password
+      email: autoGenEmail,
+      password: autoGenPass
     });
   };
 
@@ -224,14 +234,13 @@ export default function AdminDashboard({ activePage }) {
   };
 
   const resetUserForm = () => {
-    setUserForm({ role: 'student', first_name: '', middle_name: '', last_name: '', email: '', password: '', student_number: '', course: '', year_level: '', gender: '', employee_id: '', department: '' });
+    setUserForm({ role: 'student', first_name: '', middle_name: '', last_name: '', email: '', password: '', student_number: generateIdForRole('student'), course: '', year_level: '', gender: '', employee_id: generateIdForRole('staff'), department: '' });
     setUserFormError('');
-    setShowAddUserPassword(false);
   };
 
   const addUser = async () => {
     if (!userForm.first_name || !userForm.last_name || !userForm.email || !userForm.password) {
-      setUserFormError('First name, last name, email, and password are required.');
+      setUserFormError('First name, last name, and auto-generated fields are required.');
       return;
     }
 
@@ -273,6 +282,7 @@ export default function AdminDashboard({ activePage }) {
       }
 
       setShowUserModal(false);
+      setNewlyCreatedAccount({ email: userForm.email, password: userForm.password, full_name: payload.full_name });
       resetUserForm();
       toast.success('User created successfully!');
     } catch (error) {
@@ -394,7 +404,24 @@ export default function AdminDashboard({ activePage }) {
               <select
                 className="form-select"
                 value={userForm.role}
-                onChange={e => setUserForm({ ...userForm, role: e.target.value })}
+                onChange={e => {
+                  const newRole = e.target.value;
+                  const first = userForm.first_name.replace(/[^a-zA-Z]/g, '').toLowerCase();
+                  const last = userForm.last_name.replace(/[^a-zA-Z]/g, '').toLowerCase();
+                  const domain = newRole === 'staff' ? '@staff.edu.ph' : '@student.edu.ph';
+                  const autoGenEmail = first && last ? `${first}${last}${domain}` : '';
+                  const autoGenPass = first && last ? `${first}${last}123` : '';
+                  
+                  const idField = newRole === 'staff' ? 'employee_id' : 'student_number';
+                  
+                  setUserForm({ 
+                    ...userForm, 
+                    role: newRole, 
+                    email: autoGenEmail, 
+                    password: autoGenPass,
+                    [idField]: userForm[idField] || generateIdForRole(newRole)
+                  });
+                }}
               >
                 <option value="student">Student</option>
                 <option value="staff">Staff</option>
@@ -405,7 +432,7 @@ export default function AdminDashboard({ activePage }) {
               <>
                 <div className="form-group">
                   <label className="form-label">Student ID Number</label>
-                  <input className="form-input" value={userForm.student_number} onChange={e => setUserForm({ ...userForm, student_number: e.target.value })} placeholder="e.g. SN-2023-12345" />
+                  <input className="form-input" required readOnly value={userForm.student_number} style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }} />
                 </div>
                 <div className="form-row">
                   <div className="form-group" style={{ flex: 1 }}>
@@ -443,7 +470,7 @@ export default function AdminDashboard({ activePage }) {
               <>
                 <div className="form-group">
                   <label className="form-label">Employee ID</label>
-                  <input className="form-input" value={userForm.employee_id} onChange={e => setUserForm({ ...userForm, employee_id: e.target.value })} />
+                  <input className="form-input" required readOnly value={userForm.employee_id} style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }} />
                 </div>
                 <div className="form-row">
                   <div className="form-group" style={{ flex: 1 }}>
@@ -466,28 +493,42 @@ export default function AdminDashboard({ activePage }) {
               </>
             )}
 
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Email</label>
-                <input type="email" className="form-input" required value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Temporary Password</label>
-                <div style={{ position: 'relative' }}>
-                  <input type={showAddUserPassword ? "text" : "password"} className="form-input" required value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} style={{ paddingRight: '40px' }} />
-                  <button type="button" onClick={() => setShowAddUserPassword(!showAddUserPassword)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                    {showAddUserPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
+            <div className="form-group">
+              <label className="form-label">Email Address (Auto-generated)</label>
+              <input type="email" className="form-input" required readOnly value={userForm.email} style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }} />
             </div>
-
-            <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', margin: '4px 0 16px' }}>
-              The temporary password is required to create the account.
-            </p>
 
             <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={addUser}>
               <Plus size={16} /> Add User
+            </button>
+          </div>
+        </div>
+      )}
+
+      {newlyCreatedAccount && (
+        <div className="modal-overlay" onClick={() => setNewlyCreatedAccount(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center', padding: '32px 24px' }}>
+            <div style={{ width: '64px', height: '64px', background: 'rgba(16,185,129,0.1)', color: '#10b981', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <CheckCircle2 size={32} />
+            </div>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-primary)' }}>User Created!</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.9rem', lineHeight: '1.5' }}>
+              The account for <strong>{newlyCreatedAccount.full_name}</strong> has been created. Please share these login details securely.
+            </p>
+            
+            <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px', marginBottom: '24px', textAlign: 'left' }}>
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Email Address</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)', userSelect: 'all' }}>{newlyCreatedAccount.email}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Generated Password</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--status-approved)', userSelect: 'all' }}>{newlyCreatedAccount.password}</div>
+              </div>
+            </div>
+
+            <button className="btn btn-primary w-full" onClick={() => setNewlyCreatedAccount(null)} style={{ justifyContent: 'center' }}>
+              Done
             </button>
           </div>
         </div>
@@ -851,6 +892,7 @@ function ReportsView({ stats, placements, students, companies }) {
 function PendingAccountsView() {
   const [pendingAccounts, setPendingAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [approvedAccountInfo, setApprovedAccountInfo] = useState(null);
 
   const fetchPendingAccounts = async () => {
     setLoading(true);
@@ -871,7 +913,7 @@ function PendingAccountsView() {
   }, []);
 
   const handleApprove = async (user_id) => {
-    if (!window.confirm("Approve this account? An email will be sent to the user with their temporary password.")) return;
+    if (!window.confirm("Approve this account? An email will be sent to the user with their generated password.")) return;
     try {
       const res = await fetchWithAuth(`${API_BASE_URL}/admin/approve-account`, {
         method: 'POST',
@@ -879,7 +921,11 @@ function PendingAccountsView() {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(data.message || 'Account approved');
+        setApprovedAccountInfo({
+          email: pendingAccounts.find(u => u.user_id === user_id)?.email,
+          password: data.generatedPassword
+        });
+        toast.success('Account approved successfully');
         fetchPendingAccounts();
       } else {
         toast.error(data.message || 'Error approving account');
@@ -887,6 +933,26 @@ function PendingAccountsView() {
     } catch (err) {
       console.error(err);
       toast.error('Server error while approving account');
+    }
+  };
+
+  const handleReject = async (user_id) => {
+    if (!window.confirm("Are you sure you want to reject this account?")) return;
+    try {
+      const res = await fetchWithAuth(`${API_BASE_URL}/admin/reject-account`, {
+        method: 'POST',
+        body: JSON.stringify({ user_id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message || 'Account rejected');
+        fetchPendingAccounts();
+      } else {
+        toast.error(data.message || 'Error rejecting account');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Server error while rejecting account');
     }
   };
 
@@ -925,9 +991,14 @@ function PendingAccountsView() {
                     <td style={{ color: 'var(--text-muted)' }}>{u.details?.course} - {u.details?.year_level}</td>
                     <td><StatusBadge status="pending" /></td>
                     <td>
-                      <button className="btn btn-success btn-xs" onClick={() => handleApprove(u.user_id)}>
-                        <CheckCircle2 size={12} /> Approve Account
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button className="btn btn-success btn-xs" onClick={() => handleApprove(u.user_id)}>
+                          <CheckCircle2 size={12} /> Approve
+                        </button>
+                        <button className="btn btn-ghost btn-xs" onClick={() => handleReject(u.user_id)} style={{ color: '#f43f5e' }}>
+                          <XCircle size={12} /> Reject
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -936,6 +1007,37 @@ function PendingAccountsView() {
           )}
         </div>
       </div>
+
+      {approvedAccountInfo && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-header">
+              <h2>Account Approved</h2>
+              <button className="icon-btn" onClick={() => setApprovedAccountInfo(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ padding: '20px', textAlign: 'center' }}>
+                <p style={{ marginBottom: '16px', color: 'var(--text-muted)' }}>
+                  The account has been approved. Please share these credentials with the student:
+                </p>
+                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '16px', borderRadius: '8px', marginBottom: '24px', textAlign: 'left' }}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.9rem' }}>Email</span>
+                    <strong style={{ fontSize: '1.1rem' }}>{approvedAccountInfo.email}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.9rem' }}>Password</span>
+                    <strong style={{ fontSize: '1.1rem', color: 'var(--primary-color)' }}>{approvedAccountInfo.password}</strong>
+                  </div>
+                </div>
+                <button className="btn btn-primary w-full" onClick={() => setApprovedAccountInfo(null)}>Done</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -510,22 +510,29 @@ function StudentProfilingView() {
     course: '',
     year_section: '',
     gender: '',
-    email: '',
-    password: ''
+    email: ''
   });
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    generateStudentId();
+  }, []);
+
+  const generateStudentId = () => {
+    const year = new Date().getFullYear();
+    const random = Math.floor(100000 + Math.random() * 900000);
+    setFormData(prev => ({ ...prev, student_number: `${year}-${random}` }));
+  };
 
   const handleNameChange = (field, value) => {
     const updatedForm = { ...formData, [field]: value };
     const first = updatedForm.first_name.replace(/[^a-zA-Z]/g, '').toLowerCase();
     const last = updatedForm.last_name.replace(/[^a-zA-Z]/g, '').toLowerCase();
-    const autoGen = first && last ? `${first}${last}` : '';
+    const autoGen = first && last ? `${first}${last}@student.edu.ph` : '';
 
     setFormData({
       ...updatedForm,
-      email: autoGen ? `${autoGen}@gmail.com` : updatedForm.email,
-      password: autoGen ? `${autoGen}123` : updatedForm.password
+      email: autoGen
     });
   };
 
@@ -538,19 +545,24 @@ function StudentProfilingView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          student_number: formData.student_number,
+          first_name: formData.first_name,
+          middle_name: formData.middle_name,
+          last_name: formData.last_name,
           email: formData.email,
-          password: formData.password,
-          full_name: `${formData.first_name} ${formData.middle_name} ${formData.last_name}`.replace(/\s+/g, ' ').trim(),
+          password: 'PENDING_APPROVAL',
           gender: formData.gender,
           course: formData.course,
           year_section: formData.year_section,
-          student_number: formData.student_number
+          year_level: formData.year_section,
+          company_id: null
         })
       });
       const data = await res.json();
       if (data.success) {
         toast.success(`Account created successfully! Admin approval is pending. (Email: ${formData.email})`);
-        setFormData({ student_number: '', first_name: '', middle_name: '', last_name: '', course: '', year_section: '', gender: '', email: '', password: '' });
+        setFormData({ first_name: '', middle_name: '', last_name: '', course: '', year_section: '', gender: '', email: '' });
+        generateStudentId();
       } else {
         toast.error(data.message || 'Registration failed');
       }
@@ -570,7 +582,7 @@ function StudentProfilingView() {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="form-group">
             <label className="form-label">Student ID Number</label>
-            <input type="text" className="form-input" required value={formData.student_number} onChange={e => setFormData({ ...formData, student_number: e.target.value })} placeholder="e.g. SN-2023-12345" />
+            <input type="text" className="form-input" required readOnly value={formData.student_number} style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }} />
           </div>
 
           <div style={{ display: 'flex', gap: '16px' }}>
@@ -608,20 +620,9 @@ function StudentProfilingView() {
             </select>
           </div>
 
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-              <label className="form-label">Email</label>
-              <input type="email" className="form-input" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="e.g. jdelacruz@busi.edu.ph" />
-            </div>
-            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-              <label className="form-label">Password</label>
-              <div style={{ position: 'relative' }}>
-                <input type={showPassword ? "text" : "password"} className="form-input" required value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} style={{ paddingRight: '40px' }} />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
+          <div className="form-group">
+            <label className="form-label">Email Address (Auto-generated)</label>
+            <input type="email" className="form-input" required readOnly value={formData.email} style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }} />
           </div>
 
           <button type="submit" className="btn btn-primary" disabled={loading} style={{ justifyContent: 'center' }}>

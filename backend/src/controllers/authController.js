@@ -32,6 +32,9 @@ exports.login = async (req, res) => {
     if (user.status === 'pending_admin_approval') {
       return res.status(403).json({ success: false, message: "Account is pending administrator approval." });
     }
+    if (user.status === 'inactive' || user.status === 'rejected') {
+      return res.status(403).json({ success: false, message: "Account has been deactivated or rejected." });
+    }
 
     const token = jwt.sign(
       { user_id: user.user_id, email: user.email, role: user.role },
@@ -60,15 +63,19 @@ exports.login = async (req, res) => {
 
 exports.registerStudent = async (req, res) => {
   try {
-    const { email, password, full_name, gender, course, year_section, year_level, company_id } = req.body;
+    const { email, password, first_name, middle_name, last_name, full_name, gender, course, year_section, year_level, company_id, student_number } = req.body;
+    
+    // Construct full_name if not provided
+    const constructedFullName = full_name || [first_name, middle_name, last_name].filter(Boolean).join(' ');
+    
     const existing = await AuthModel.getUserByEmail(email);
     
     if (existing.length > 0) {
       return res.status(400).json({ success: false, message: "Email already registered" });
     }
 
-    // Call stored procedure
-    const student_number = req.body.student_number || `SN-${Date.now()}`;
+    // Use frontend generated student number or fallback
+    const resolvedStudentNumber = student_number || `2026-${Math.floor(100000 + Math.random() * 900000)}`;
     const resolvedYearLevel = year_level || year_section;
     if (!resolvedYearLevel) {
       return res.status(400).json({ success: false, message: 'year_level is required' });
@@ -77,7 +84,7 @@ exports.registerStudent = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     await AuthModel.registerStudent({
-      email, hashedPassword, student_number, full_name, gender, course, resolvedYearLevel
+      email, hashedPassword, student_number: resolvedStudentNumber, full_name: constructedFullName, first_name, middle_name, last_name, gender, course, resolvedYearLevel
     });
 
     if (company_id) {

@@ -90,12 +90,36 @@ exports.approveAccount = async (req, res) => {
   try {
     const { user_id } = req.body;
     const admin_id = req.user?.user_id || 1;
-    await AdminModel.approveAccount(user_id, admin_id);
+    
+    // Find user details to generate password
+    const pendingData = await AdminModel.getPendingAccounts();
+    const user = pendingData.find(u => u.user_id === user_id);
+    
+    let generatedPassword = 'password123';
+    if (user && user.first_name && user.last_name) {
+      generatedPassword = `${user.first_name}${user.last_name}123`.toLowerCase().replace(/\s+/g, '');
+    }
+
+    const bcrypt = require('bcrypt');
+    const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+    
+    await AdminModel.approveAccount(user_id, admin_id, hashedPassword);
     
     // Simulate sending email
-    console.log(`[SIMULATED EMAIL] Account approved! Email sent to user_id ${user_id} with default password.`);
+    console.log(`[SIMULATED EMAIL] Account approved! Email sent to user_id ${user_id} with password: ${generatedPassword}`);
 
-    return res.json({ success: true, message: "Account approved successfully" });
+    return res.json({ success: true, message: "Account approved successfully", generatedPassword });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.rejectAccount = async (req, res) => {
+  try {
+    const { user_id } = req.body;
+    await AdminModel.rejectAccount(user_id);
+    return res.json({ success: true, message: "Account rejected successfully" });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, message: 'Server error' });

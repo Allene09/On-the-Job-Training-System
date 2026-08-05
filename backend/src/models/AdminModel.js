@@ -39,8 +39,8 @@ class AdminModel {
     return rows[0];
   }
 
-  static async approveAccount(userId, adminId = 1) {
-    await pool.query('CALL sp_ApproveStudentAccount(?)', [userId]);
+  static async approveAccount(userId, adminId = 1, hashedPassword) {
+    await pool.query('CALL sp_ApproveStudentAccount(?, ?)', [userId, hashedPassword]);
 
     // Check if user is a student to auto-approve pending company applications
     const [userRows] = await pool.query('SELECT role FROM users WHERE user_id = ?', [userId]);
@@ -65,6 +65,10 @@ class AdminModel {
         }
       }
     }
+  }
+
+  static async rejectAccount(userId) {
+    await pool.query('CALL sp_RejectStudentAccount(?)', [userId]);
   }
 
   static async createUser(data) {

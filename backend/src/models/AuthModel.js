@@ -17,10 +17,10 @@ class AuthModel {
   }
 
   static async registerStudent(data) {
-    const { email, hashedPassword, student_number, full_name, gender, course, resolvedYearLevel } = data;
+    const { email, hashedPassword, student_number, full_name, first_name, middle_name, last_name, gender, course, resolvedYearLevel } = data;
     await pool.query(
-      'CALL sp_RegisterStudent(?, ?, ?, ?, ?, ?, ?)',
-      [email, hashedPassword, student_number, full_name, gender, course, resolvedYearLevel]
+      'CALL sp_RegisterStudent(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [email, hashedPassword, student_number, full_name, first_name, middle_name, last_name, gender, course, resolvedYearLevel]
     );
   }
 

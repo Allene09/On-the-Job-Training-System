@@ -46,10 +46,27 @@ export default function LandingScreen({ onGetStarted }) {
   const [showRegModal, setShowRegModal] = useState(false);
   const [applyingCompanyId, setApplyingCompanyId] = useState(null);
   const [regForm, setRegForm] = useState({
-    first_name: '', last_name: '', course: '', year_section: '', gender: '', email: '', password: ''
+    first_name: '', middle_name: '', last_name: '', course: '', year_section: '', gender: '', email: '', student_number: ''
   });
   const [regError, setRegError] = useState('');
   const [regLoading, setRegLoading] = useState(false);
+
+  useEffect(() => {
+    if (showRegModal && !regForm.student_number) {
+      const randomId = Math.floor(100000 + Math.random() * 900000);
+      setRegForm(prev => ({ ...prev, student_number: `2026-${randomId}` }));
+    }
+  }, [showRegModal]);
+
+  useEffect(() => {
+    if (regForm.first_name || regForm.last_name) {
+      const fn = regForm.first_name.toLowerCase().trim().replace(/\s+/g, '');
+      const ln = regForm.last_name.toLowerCase().trim().replace(/\s+/g, '');
+      if (fn || ln) {
+        setRegForm(prev => ({ ...prev, email: `${fn}.${ln}@student.edu.ph`.replace(/^\./, '') }));
+      }
+    }
+  }, [regForm.first_name, regForm.last_name]);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/companies`)
@@ -83,9 +100,12 @@ export default function LandingScreen({ onGetStarted }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          student_number: regForm.student_number,
+          first_name: regForm.first_name,
+          middle_name: regForm.middle_name,
+          last_name: regForm.last_name,
           email: regForm.email,
-          password: regForm.password,
-          full_name: `${regForm.first_name} ${regForm.last_name}`.trim(),
+          password: 'PENDING_APPROVAL',
           gender: regForm.gender,
           course: regForm.course,
           year_section: regForm.year_section,
@@ -97,7 +117,7 @@ export default function LandingScreen({ onGetStarted }) {
       if (data.success) {
         setAppliedIds(prev => [...prev, applyingCompanyId]);
         setShowRegModal(false);
-        setRegForm({ first_name: '', last_name: '', course: '', year_section: '', gender: '', email: '', password: '' });
+        setRegForm({ first_name: '', middle_name: '', last_name: '', course: '', year_section: '', gender: '', email: '', student_number: '' });
       } else {
         setRegError(data.message || 'Registration failed');
       }
@@ -150,10 +170,18 @@ export default function LandingScreen({ onGetStarted }) {
             )}
 
             <form onSubmit={handleRegister}>
+              <div className="form-group">
+                <label className="form-label">Student ID</label>
+                <input type="text" className="form-input" readOnly value={regForm.student_number} style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }} />
+              </div>
               <div style={{ display: 'flex', gap: '16px' }}>
                 <div className="form-group" style={{ flex: 1 }}>
                   <label className="form-label">First Name</label>
                   <input type="text" className="form-input" required value={regForm.first_name} onChange={e => setRegForm({ ...regForm, first_name: e.target.value })} />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">Middle Name</label>
+                  <input type="text" className="form-input" value={regForm.middle_name} onChange={e => setRegForm({ ...regForm, middle_name: e.target.value })} />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
                   <label className="form-label">Last Name</label>
@@ -185,18 +213,13 @@ export default function LandingScreen({ onGetStarted }) {
               <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '16px', color: 'var(--text-primary)' }}>Account Information</h3>
 
               <div className="form-group">
-                <label className="form-label">Email Address</label>
-                <input type="email" className="form-input" required value={regForm.email} onChange={e => setRegForm({ ...regForm, email: e.target.value })} />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Password</label>
-                <input type="password" className="form-input" required minLength={6} value={regForm.password} onChange={e => setRegForm({ ...regForm, password: e.target.value })} />
+                <label className="form-label">Email Address (Auto-generated)</label>
+                <input type="email" className="form-input" required readOnly value={regForm.email} style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }} />
               </div>
 
               <div style={{ marginTop: '24px' }}>
                 <button type="submit" className="btn btn-primary w-full" disabled={regLoading} style={{ justifyContent: 'center' }}>
-                  {regLoading ? 'Registering...' : 'Register & Apply'}
+                  {regLoading ? 'Registering...' : 'Register'}
                 </button>
               </div>
             </form>
@@ -213,9 +236,11 @@ export default function LandingScreen({ onGetStarted }) {
           </span>
         </div>
         <div>
-          <button className="btn btn-ghost" style={{ marginRight: '16px' }} onClick={onGetStarted}>Sign In</button>
-          <button className="btn btn-primary" onClick={onGetStarted}>
-            Get Started <ArrowRight size={16} />
+          <button className="btn btn-primary" style={{ marginRight: '16px' }} onClick={() => setShowRegModal(true)}>
+            Student Registration
+          </button>
+          <button className="btn btn-ghost" onClick={onGetStarted}>
+            Sign In <ArrowRight size={16} />
           </button>
         </div>
       </nav>
@@ -236,13 +261,6 @@ export default function LandingScreen({ onGetStarted }) {
           style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto 40px', lineHeight: 1.6 }}>
           OJTrack digitizes the entire internship process — from requirement submissions and company applications to daily time records and final evaluations.
         </motion.p>
-        <motion.button 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.4, type: 'spring', stiffness: 200 }}
-          className="btn btn-primary" style={{ padding: '16px 32px', fontSize: '1.1rem', borderRadius: '30px' }} onClick={onGetStarted}>
-          Access System
-        </motion.button>
       </section>
 
       {/* Services Grid */}
@@ -493,15 +511,6 @@ export default function LandingScreen({ onGetStarted }) {
             </div>
           )}
 
-          {/* CTA below companies */}
-          <div style={{ textAlign: 'center', marginTop: '40px' }}>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '16px' }}>
-              Want to see all companies and track your application status?
-            </p>
-            <button className="btn btn-primary" onClick={onGetStarted} style={{ padding: '12px 28px' }}>
-              Sign In to Apply <ArrowRight size={16} />
-            </button>
-          </div>
         </div>
       </section>
       {/* ===== End Partner Companies Section ===== */}
