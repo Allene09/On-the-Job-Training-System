@@ -39,10 +39,17 @@ export default function LandingScreen({ onGetStarted }) {
     "System-wide Analytics"
   ];
 
-  // ---- Partner Companies State ----
   const [companies, setCompanies] = useState([]);
   const [companySearch, setCompanySearch] = useState('');
   const [appliedIds, setAppliedIds] = useState([]); // track which company IDs the visitor applied to
+
+  const [showRegModal, setShowRegModal] = useState(false);
+  const [applyingCompanyId, setApplyingCompanyId] = useState(null);
+  const [regForm, setRegForm] = useState({
+    first_name: '', last_name: '', course: '', year_section: '', gender: '', email: '', password: ''
+  });
+  const [regError, setRegError] = useState('');
+  const [regLoading, setRegLoading] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/companies`)
@@ -63,8 +70,41 @@ export default function LandingScreen({ onGetStarted }) {
 
   const handleApply = (company_id) => {
     if (appliedIds.includes(company_id)) return;
-    localStorage.setItem('pendingApplication', company_id);
-    onGetStarted();
+    setApplyingCompanyId(company_id);
+    setShowRegModal(true);
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setRegLoading(true);
+    setRegError('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: regForm.email,
+          password: regForm.password,
+          full_name: `${regForm.first_name} ${regForm.last_name}`.trim(),
+          gender: regForm.gender,
+          course: regForm.course,
+          year_section: regForm.year_section,
+          year_level: regForm.year_section,
+          company_id: applyingCompanyId
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAppliedIds(prev => [...prev, applyingCompanyId]);
+        setShowRegModal(false);
+        setRegForm({ first_name: '', last_name: '', course: '', year_section: '', gender: '', email: '', password: '' });
+      } else {
+        setRegError(data.message || 'Registration failed');
+      }
+    } catch (err) {
+      setRegError('Server error while registering');
+    }
+    setRegLoading(false);
   };
 
   const industryColor = (industry = '') => {
@@ -91,6 +131,78 @@ export default function LandingScreen({ onGetStarted }) {
       {/* 21st Century Floating Background Orbs */}
       <div className="floating-orb orb-primary" style={{ width: '400px', height: '400px', top: '10%', left: '5%' }}></div>
       <div className="floating-orb orb-secondary" style={{ width: '500px', height: '500px', bottom: '20%', right: '5%', animationDelay: '2s' }}></div>
+
+      {showRegModal && (
+        <div className="modal-overlay" onClick={() => setShowRegModal(false)} style={{ zIndex: 9999 }}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', background: 'var(--color-bg-glass)', backdropFilter: 'blur(20px)' }}>
+            <div className="modal-header">
+              <h2 className="modal-title">Student Registration</h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowRegModal(false)}>✕</button>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.9rem' }}>
+              Create an account to submit your application.
+            </p>
+
+            {regError && (
+              <div style={{ padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.86rem', background: 'rgba(244,63,94,0.1)', color: 'var(--status-rejected)' }}>
+                {regError}
+              </div>
+            )}
+
+            <form onSubmit={handleRegister}>
+              <div style={{ display: 'flex', gap: '16px' }}>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">First Name</label>
+                  <input type="text" className="form-input" required value={regForm.first_name} onChange={e => setRegForm({ ...regForm, first_name: e.target.value })} />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">Last Name</label>
+                  <input type="text" className="form-input" required value={regForm.last_name} onChange={e => setRegForm({ ...regForm, last_name: e.target.value })} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Course</label>
+                <input type="text" className="form-input" required value={regForm.course} onChange={e => setRegForm({ ...regForm, course: e.target.value })} placeholder="e.g. BS Computer Science" />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Year and Section</label>
+                <input type="text" className="form-input" required value={regForm.year_section} onChange={e => setRegForm({ ...regForm, year_section: e.target.value })} placeholder="e.g. 4th Year - Section A" />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Gender</label>
+                <select className="form-input" required value={regForm.gender} onChange={e => setRegForm({ ...regForm, gender: e.target.value })}>
+                  <option value="">Select Gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div className="divider" style={{ margin: '24px 0', borderColor: 'var(--color-border)' }} />
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '16px', color: 'var(--text-primary)' }}>Account Information</h3>
+
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <input type="email" className="form-input" required value={regForm.email} onChange={e => setRegForm({ ...regForm, email: e.target.value })} />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Password</label>
+                <input type="password" className="form-input" required minLength={6} value={regForm.password} onChange={e => setRegForm({ ...regForm, password: e.target.value })} />
+              </div>
+
+              <div style={{ marginTop: '24px' }}>
+                <button type="submit" className="btn btn-primary w-full" disabled={regLoading} style={{ justifyContent: 'center' }}>
+                  {regLoading ? 'Registering...' : 'Register & Apply'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Navbar */}
       <nav style={{ padding: '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg-glass)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, zIndex: 50 }}>
@@ -263,7 +375,7 @@ export default function LandingScreen({ onGetStarted }) {
                     onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
                   >
                     {/* Company Photo */}
-                    <div style={{ height: '140px', width: '100%', background: `url(${c.photo_url || ''}) center/cover no-repeat`, backgroundColor: '#1e293b' }} />
+                    <div style={{ height: '140px', width: '100%', background: `url(${c.photo_url ? API_BASE_URL.replace('/api', '') + c.photo_url : ''}) center/cover no-repeat`, backgroundColor: '#1e293b' }} />
                     
                     <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
                     {/* Full banner */}

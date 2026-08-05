@@ -1,4 +1,5 @@
 -- OJTrack Stored Procedures Reference File (MySQL)
+-- Derived from backend/Ojt backup.sql and aligned with the current app
 
 DELIMITER $$
 
@@ -160,6 +161,69 @@ BEGIN
     UPDATE users
     SET status = 'active'
     WHERE user_id = p_user_id;
+END$$
+
+CREATE PROCEDURE sp_RegisterStaff(
+    IN p_email VARCHAR(150),
+    IN p_password_hash VARCHAR(255),
+    IN p_full_name VARCHAR(150),
+    IN p_employee_id VARCHAR(30),
+    IN p_department VARCHAR(100)
+)
+BEGIN
+    DECLARE new_user_id INT;
+
+    INSERT INTO users (email, password_hash, role, status, requires_password_change)
+    VALUES (p_email, p_password_hash, 'staff', 'active', FALSE);
+
+    SET new_user_id = LAST_INSERT_ID();
+
+    INSERT INTO staff (user_id, employee_id, full_name, department)
+    VALUES (new_user_id, p_employee_id, p_full_name, p_department);
+END$$
+
+CREATE PROCEDURE sp_UpdateUserProfile(
+    IN p_user_id INT,
+    IN p_role ENUM('student','staff','admin'),
+    IN p_email VARCHAR(150),
+    IN p_password_hash VARCHAR(255),
+    IN p_full_name VARCHAR(150),
+    IN p_student_number VARCHAR(30),
+    IN p_course VARCHAR(100),
+    IN p_year_level VARCHAR(50),
+    IN p_gender VARCHAR(20),
+    IN p_employee_id VARCHAR(30),
+    IN p_department VARCHAR(100)
+)
+BEGIN
+    UPDATE users
+    SET email = p_email,
+        password_hash = CASE
+            WHEN p_password_hash IS NULL OR p_password_hash = '' THEN password_hash
+            ELSE p_password_hash
+        END,
+        requires_password_change = 0
+    WHERE user_id = p_user_id;
+
+    IF p_role = 'student' THEN
+        UPDATE students
+        SET full_name = p_full_name,
+            student_number = COALESCE(NULLIF(p_student_number, ''), student_number),
+            course = p_course,
+            year_level = p_year_level,
+            gender = p_gender
+        WHERE user_id = p_user_id;
+    ELSEIF p_role = 'staff' THEN
+        UPDATE staff
+        SET full_name = p_full_name,
+            employee_id = COALESCE(NULLIF(p_employee_id, ''), employee_id),
+            department = p_department
+        WHERE user_id = p_user_id;
+    ELSEIF p_role = 'admin' THEN
+        UPDATE admins
+        SET full_name = p_full_name
+        WHERE user_id = p_user_id;
+    END IF;
 END$$
 
 DELIMITER ;

@@ -34,10 +34,14 @@ export default function AdminDashboard({ activePage }) {
   const [placements, setPlacements] = useState([]);
   const [admins, setAdmins] = useState([]);
   const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [showEditCompanyModal, setShowEditCompanyModal] = useState(false);
   const [showReqModal, setShowReqModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showAddUserPassword, setShowAddUserPassword] = useState(false);
   const [companyForm, setCompanyForm] = useState({ company_name: '', industry: '', address: '', contact_person: '', contact_number: '', email: '', slots_available: 5, photo_url: '', requirements: '' });
+  const [companyPhotoFile, setCompanyPhotoFile] = useState(null);
+  const [editCompanyForm, setEditCompanyForm] = useState(null);
+  const [editCompanyPhotoFile, setEditCompanyPhotoFile] = useState(null);
   const [reqForm, setReqForm] = useState({ name: '', description: '', is_required: true, deadline: '' });
   const [userForm, setUserForm] = useState({
     role: 'student',
@@ -73,12 +77,13 @@ export default function AdminDashboard({ activePage }) {
     const fetchAdminData = async () => {
       try {
         setLoading(true);
-        const [usersRes, compsRes, reqsRes, annRes, statsRes] = await Promise.all([
+        const [usersRes, compsRes, reqsRes, annRes, statsRes, placementsRes] = await Promise.all([
           fetchWithAuth(`${API_BASE_URL}/admin/users`),
           fetchWithAuth(`${API_BASE_URL}/companies`),
           fetchWithAuth(`${API_BASE_URL}/requirements/types`),
           fetchWithAuth(`${API_BASE_URL}/admin/announcements`),
-          fetchWithAuth(`${API_BASE_URL}/admin/stats`)
+          fetchWithAuth(`${API_BASE_URL}/admin/stats`),
+          fetchWithAuth(`${API_BASE_URL}/admin/placements`)
         ]);
 
         if (!isMounted) return;
@@ -88,6 +93,7 @@ export default function AdminDashboard({ activePage }) {
         const reqsData = await reqsRes.json();
         const annData = await annRes.json();
         const statsData = await statsRes.json();
+        const placementsData = await placementsRes.json();
 
         const allUsers = usersData.data || [];
         setUsers(allUsers);
@@ -97,6 +103,7 @@ export default function AdminDashboard({ activePage }) {
         setCompanies(compsData.data || []);
         setReqTypes(reqsData.data || []);
         setAnnouncements(annData.data || []);
+        setPlacements(placementsData.data || []);
         
         // Since backend doesn't have an endpoint for all placements in admin, we mock the stats or fetch them if added.
         // For now, let's use the provided stats from backend.
@@ -120,24 +127,78 @@ export default function AdminDashboard({ activePage }) {
     return () => { isMounted = false; };
   }, []);
 
-  const addCompany = async () => {
-    if (!companyForm.company_name) return;
+  const uploadPhoto = async (file) => {
+    const formData = new FormData();
+    formData.append('photo', file);
     try {
-      const res = await fetchWithAuth(`${API_BASE_URL}/companies`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/companies/upload`, {
         method: 'POST',
-        body: JSON.stringify({ ...companyForm, added_by: currentUser?.user_id || 1 })
+        body: formData
       });
       const data = await res.json();
       if (data.success) {
-        setCompanies([...companies, { ...companyForm, company_id: data.data.company_id, status: 'active', added_by: currentUser?.user_id || 1, created_at: new Date().toISOString(), slots_available: parseInt(companyForm.slots_available) }]);
+        return data.photo_url;
+      }
+      return null;
+    } catch (err) {
+      console.error('Upload failed:', err);
+      return null;
+    }
+  };
+
+  const addCompany = async () => {
+    if (!companyForm.company_name) return;
+    try {
+      let finalPhotoUrl = companyForm.photo_url;
+      if (companyPhotoFile) {
+        const uploadedUrl = await uploadPhoto(companyPhotoFile);
+        if (uploadedUrl) finalPhotoUrl = uploadedUrl;
+      }
+
+      const res = await fetchWithAuth(`${API_BASE_URL}/companies`, {
+        method: 'POST',
+        body: JSON.stringify({ ...companyForm, photo_url: finalPhotoUrl, added_by: currentUser?.user_id || 1 })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCompanies([...companies, { ...companyForm, photo_url: finalPhotoUrl, company_id: data.data.company_id, status: 'active', added_by: currentUser?.user_id || 1, created_at: new Date().toISOString(), slots_available: parseInt(companyForm.slots_available) }]);
         setShowCompanyModal(false);
         setCompanyForm({ company_name: '', industry: '', address: '', contact_person: '', contact_number: '', email: '', slots_available: 5, photo_url: '', requirements: '' });
+        setCompanyPhotoFile(null);
         toast.success('Company added successfully!');
       } else {
         toast.error(data.message || 'Failed to add company');
       }
     } catch (error) {
       toast.error('Server error while adding company');
+    }
+  };
+
+  const updateCompany = async () => {
+    if (!editCompanyForm || !editCompanyForm.company_name) return;
+    try {
+      let finalPhotoUrl = editCompanyForm.photo_url;
+      if (editCompanyPhotoFile) {
+        const uploadedUrl = await uploadPhoto(editCompanyPhotoFile);
+        if (uploadedUrl) finalPhotoUrl = uploadedUrl;
+      }
+
+      const res = await fetchWithAuth(`${API_BASE_URL}/companies/${editCompanyForm.company_id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...editCompanyForm, photo_url: finalPhotoUrl })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCompanies(companies.map(c => c.company_id === editCompanyForm.company_id ? { ...editCompanyForm, photo_url: finalPhotoUrl } : c));
+        setShowEditCompanyModal(false);
+        setEditCompanyForm(null);
+        setEditCompanyPhotoFile(null);
+        toast.success('Company updated successfully!');
+      } else {
+        toast.error(data.message || 'Failed to update company');
+      }
+    } catch (error) {
+      toast.error('Server error while updating company');
     }
   };
 
@@ -235,7 +296,7 @@ export default function AdminDashboard({ activePage }) {
     dashboard: <AdminOverview stats={stats} announcements={announcements} />,
     users: <ManageUsersView users={users} students={students} staff={staff} admins={admins} onAdd={() => setShowUserModal(true)} />,
     pending: <PendingAccountsView />,
-    companies: <ManageCompaniesView companies={companies} onAdd={() => setShowCompanyModal(true)} setCompanies={setCompanies} />,
+    companies: <ManageCompaniesView companies={companies} onAdd={() => setShowCompanyModal(true)} setCompanies={setCompanies} onEdit={(c) => { setEditCompanyForm(c); setShowEditCompanyModal(true); }} />,
     requirements: <ManageRequirementsView reqTypes={reqTypes} onAdd={() => setShowReqModal(true)} setReqTypes={setReqTypes} />,
     reports: <ReportsView stats={stats} placements={placements} students={students} companies={companies} />,
     profile: <AdminProfileView currentUser={currentUser} />
@@ -254,12 +315,43 @@ export default function AdminDashboard({ activePage }) {
             <div className="form-group"><label className="form-label">Address</label><input className="form-input" value={companyForm.address} onChange={e => setCompanyForm({ ...companyForm, address: e.target.value })} /></div>
             <div className="form-row">
               <div className="form-group"><label className="form-label">Contact Person</label><input className="form-input" value={companyForm.contact_person} onChange={e => setCompanyForm({ ...companyForm, contact_person: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">Contact Number</label><input className="form-input" value={companyForm.contact_number} onChange={e => setCompanyForm({ ...companyForm, contact_number: e.target.value })} /></div>
               <div className="form-group"><label className="form-label">Slots Available</label><input type="number" className="form-input" value={companyForm.slots_available} min="1" onChange={e => setCompanyForm({ ...companyForm, slots_available: e.target.value })} /></div>
             </div>
             <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" value={companyForm.email} onChange={e => setCompanyForm({ ...companyForm, email: e.target.value })} /></div>
-            <div className="form-group"><label className="form-label">Photo URL</label><input type="text" className="form-input" placeholder="https://example.com/logo.png" value={companyForm.photo_url} onChange={e => setCompanyForm({ ...companyForm, photo_url: e.target.value })} /></div>
+            <div className="form-group"><label className="form-label">Photo Upload</label><input type="file" accept="image/*" className="form-input" onChange={e => {
+              const file = e.target.files[0];
+              if (file) setCompanyPhotoFile(file);
+            }} /></div>
             <div className="form-group"><label className="form-label">Requirements</label><textarea className="form-input" placeholder="e.g. Resume, Transcript, Cover Letter" value={companyForm.requirements} onChange={e => setCompanyForm({ ...companyForm, requirements: e.target.value })} style={{ minHeight: '60px' }} /></div>
             <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={addCompany}><Plus size={16} /> Add Company</button>
+          </div>
+        </div>
+      )}
+
+      {showEditCompanyModal && editCompanyForm && (
+        <div className="modal-overlay" onClick={() => setShowEditCompanyModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <div className="modal-header"><h2 className="modal-title">Edit Partner Company</h2><button className="btn btn-ghost btn-sm" onClick={() => setShowEditCompanyModal(false)}>✕</button></div>
+            <div className="form-row">
+              <div className="form-group"><label className="form-label">Company Name</label><input className="form-input" value={editCompanyForm.company_name} onChange={e => setEditCompanyForm({ ...editCompanyForm, company_name: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">Industry</label><input className="form-input" value={editCompanyForm.industry} onChange={e => setEditCompanyForm({ ...editCompanyForm, industry: e.target.value })} /></div>
+            </div>
+            <div className="form-group"><label className="form-label">Address</label><input className="form-input" value={editCompanyForm.address} onChange={e => setEditCompanyForm({ ...editCompanyForm, address: e.target.value })} /></div>
+            <div className="form-row">
+              <div className="form-group"><label className="form-label">Contact Person</label><input className="form-input" value={editCompanyForm.contact_person} onChange={e => setEditCompanyForm({ ...editCompanyForm, contact_person: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">Contact Number</label><input className="form-input" value={editCompanyForm.contact_number} onChange={e => setEditCompanyForm({ ...editCompanyForm, contact_number: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">Slots Available</label><input type="number" className="form-input" value={editCompanyForm.slots_available} min="1" onChange={e => setEditCompanyForm({ ...editCompanyForm, slots_available: e.target.value })} /></div>
+            </div>
+            <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" value={editCompanyForm.email} onChange={e => setEditCompanyForm({ ...editCompanyForm, email: e.target.value })} /></div>
+            <div className="form-group"><label className="form-label">Photo Upload</label>
+              {editCompanyForm.photo_url && !editCompanyPhotoFile && <div style={{ marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Current photo: {editCompanyForm.photo_url.split('/').pop()}</div>}
+              <input type="file" accept="image/*" className="form-input" onChange={e => {
+              const file = e.target.files[0];
+              if (file) setEditCompanyPhotoFile(file);
+            }} /></div>
+            <div className="form-group"><label className="form-label">Requirements</label><textarea className="form-input" placeholder="e.g. Resume, Transcript, Cover Letter" value={editCompanyForm.requirements} onChange={e => setEditCompanyForm({ ...editCompanyForm, requirements: e.target.value })} style={{ minHeight: '60px' }} /></div>
+            <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={updateCompany}>Save Changes</button>
           </div>
         </div>
       )}
@@ -529,7 +621,7 @@ function ManageUsersView({ users, students, staff, admins, onAdd }) {
   );
 }
 
-function ManageCompaniesView({ companies, onAdd, setCompanies }) {
+function ManageCompaniesView({ companies, onAdd, setCompanies, onEdit }) {
   const [search, setSearch] = useState('');
   const deactivate = async (id) => {
     const company = companies.find(c => c.company_id === id);
@@ -605,7 +697,7 @@ function ManageCompaniesView({ companies, onAdd, setCompanies }) {
                     <td style={{ fontWeight: 600 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         {c.photo_url ? (
-                          <div style={{ width: '40px', height: '40px', borderRadius: '6px', background: `url(${c.photo_url}) center/cover` }} />
+                          <div style={{ width: '40px', height: '40px', borderRadius: '6px', background: `url(${API_BASE_URL.replace('/api', '')}${c.photo_url}) center/cover` }} />
                         ) : (
                           <div style={{ width: '40px', height: '40px', borderRadius: '6px', background: 'var(--color-bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 800 }}>{c.company_name[0]}</div>
                         )}
@@ -641,7 +733,12 @@ function ManageCompaniesView({ companies, onAdd, setCompanies }) {
                       </div>
                     </td>
                     <td><StatusBadge status={c.status} /></td>
-                    <td><button className="btn btn-ghost btn-xs" onClick={() => deactivate(c.company_id)}>{c.status === 'active' ? 'Deactivate' : 'Activate'}</button></td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button className="btn btn-ghost btn-xs" onClick={() => onEdit(c)}>Edit Details</button>
+                        <button className="btn btn-ghost btn-xs" onClick={() => deactivate(c.company_id)}>{c.status === 'active' ? 'Deactivate' : 'Activate'}</button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}

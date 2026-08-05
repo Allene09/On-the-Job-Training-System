@@ -89,7 +89,8 @@ exports.getPendingAccounts = async (req, res) => {
 exports.approveAccount = async (req, res) => {
   try {
     const { user_id } = req.body;
-    await AdminModel.approveAccount(user_id);
+    const admin_id = req.user?.user_id || 1;
+    await AdminModel.approveAccount(user_id, admin_id);
     
     // Simulate sending email
     console.log(`[SIMULATED EMAIL] Account approved! Email sent to user_id ${user_id} with default password.`);
@@ -140,6 +141,16 @@ exports.getNotifications = async (req, res) => {
     const { user_id } = req.query;
     const rows = await AdminModel.getNotifications(user_id);
     return res.json({ success: true, data: rows });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.getPlacements = async (req, res) => {
+  try {
+    const StaffModel = require('../models/StaffModel');
+    const placements = await StaffModel.getAllPlacements();
+    return res.json({ success: true, data: placements });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, message: 'Server error' });

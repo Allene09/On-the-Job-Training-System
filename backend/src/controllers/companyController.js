@@ -33,3 +33,13 @@ exports.updateCompanyStatus = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+exports.updateCompany = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await CompanyModel.update(id, req.body);
+    return res.json({ success: true, message: "Company updated successfully" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

@@ -1,24 +1,20 @@
-const { pool } = require('../config/db');
+const StudentModel = require('../models/StudentModel');
 
 exports.getDashboardData = async (req, res) => {
   try {
     const student_id = req.user?.profile?.student_id || 1; // Fallback for testing
 
-    const [rows] = await pool.query('CALL sp_GetStudentRequirements(?)', [student_id]);
-    const requirements = rows[0];
+    const requirements = await StudentModel.getStudentRequirements(student_id);
 
-    const [placementRows] = await pool.query('CALL sp_GetActivePlacementByStudentId(?)', [student_id]);
-    const placements = placementRows[0];
+    const placements = await StudentModel.getActivePlacement(student_id);
     let placement = null;
     let attendance = [];
     let recent_evaluations = [];
 
     if (placements.length > 0) {
       placement = placements[0];
-      const [attRows] = await pool.query('CALL sp_GetRecentAttendance(?)', [placement.placement_id]);
-      attendance = attRows[0];
-      const [evalsRows] = await pool.query('CALL sp_GetRecentEvaluations(?)', [placement.placement_id]);
-      recent_evaluations = evalsRows[0];
+      attendance = await StudentModel.getRecentAttendance(placement.placement_id);
+      recent_evaluations = await StudentModel.getRecentEvaluations(placement.placement_id);
     }
 
     res.json({
@@ -39,8 +35,7 @@ exports.getDashboardData = async (req, res) => {
 exports.getRequirements = async (req, res) => {
   try {
     const student_id = req.user?.profile?.student_id || req.query.student_id || 1;
-    const [rows] = await pool.query('CALL sp_GetStudentRequirements(?)', [student_id]);
-    const requirements = rows[0];
+    const requirements = await StudentModel.getStudentRequirements(student_id);
     
     // Map to expected structure
     const fullList = requirements.map(r => ({
@@ -68,8 +63,7 @@ exports.getRequirements = async (req, res) => {
 exports.getPlacements = async (req, res) => {
   try {
     const student_id = req.user?.profile?.student_id || req.query.student_id || 1;
-    const [rows] = await pool.query('CALL sp_GetStudentPlacements(?)', [student_id]);
-    const placements = rows[0];
+    const placements = await StudentModel.getStudentPlacements(student_id);
     
     const enriched = placements.map(p => ({
       ...p,
@@ -90,7 +84,17 @@ exports.submitRequirement = async (req, res) => {
       return res.status(400).json({ success: false, message: 'file_path is required' });
     }
 
-    await pool.query('CALL sp_SubmitRequirement(?, ?, ?)', [student_id, requirement_id, file_path]);
+    // Prevent Duplication: Check if already submitted
+    const requirements = await StudentModel.getStudentRequirements(student_id);
+    const existing = requirements.find(r => r.requirement_id == requirement_id && r.submission_id);
+
+    if (existing) {
+      // Update existing submission instead of creating a duplicate
+      await StudentModel.updateRequirementSubmission(existing.submission_id, file_path);
+      return res.status(200).json({ success: true, message: "Requirement updated successfully" });
+    }
+
+    await StudentModel.submitRequirement(student_id, requirement_id, file_path);
     return res.status(201).json({ success: true, message: "Requirement submitted successfully" });
   } catch (error) {
     console.error(error);
@@ -101,12 +105,11 @@ exports.submitRequirement = async (req, res) => {
 exports.applyToCompany = async (req, res) => {
   try {
     const { student_id, company_id } = req.body;
-    const [rows] = await pool.query('CALL sp_CheckExistingApplication(?)', [student_id, company_id]);
-    const existing = rows[0];
+    const existing = await StudentModel.checkExistingApplication(student_id, company_id);
     if (existing.length > 0) {
       return res.status(400).json({ success: false, message: "Application already exists for this company" });
     }
-    await pool.query('CALL sp_ApplyToCompany(?, ?)', [student_id, company_id]);
+    await StudentModel.applyToCompany(student_id, company_id);
     return res.status(201).json({ success: true, message: "Application submitted to company" });
   } catch (error) {
     console.error(error);
@@ -117,11 +120,18 @@ exports.applyToCompany = async (req, res) => {
 exports.submitWeeklyReport = async (req, res) => {
   try {
     const { placement_id, week_number, narrative } = req.body;
-    const [rows] = await pool.query(
-      'CALL sp_SubmitWeeklyReport(?, ?, ?)',
-      [placement_id, week_number, narrative]
-    );
-    const result = rows[0][0];
+    
+    // Prevent Duplication: Check if report for this week already exists
+    const existingReports = await StudentModel.getWeeklyReports(req.user?.profile?.student_id || req.query.student_id || 1);
+    const existing = existingReports.find(r => r.placement_id == placement_id && r.week_number == week_number);
+
+    if (existing) {
+      // Update existing report
+      await StudentModel.updateWeeklyReport(existing.report_id, narrative);
+      return res.status(200).json({ success: true, message: "Weekly report updated", data: { report_id: existing.report_id } });
+    }
+
+    const result = await StudentModel.submitWeeklyReport(placement_id, week_number, narrative);
     return res.status(201).json({ success: true, message: "Weekly report submitted", data: { report_id: result.insertId } });
   } catch (error) {
     console.error(error);
@@ -132,8 +142,7 @@ exports.submitWeeklyReport = async (req, res) => {
 exports.getWeeklyReports = async (req, res) => {
   try {
     const { student_id } = req.query;
-    const [rows] = await pool.query('CALL sp_GetWeeklyReportsByStudentId(?)', [student_id || null]);
-    const reports = rows[0];
+    const reports = await StudentModel.getWeeklyReports(student_id);
     return res.json({ success: true, data: reports });
   } catch (error) {
     console.error(error);

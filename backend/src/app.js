@@ -17,6 +17,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, '../../frontend/uploads')));
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/student', studentRoutes);

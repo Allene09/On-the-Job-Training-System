@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import API_BASE_URL, { fetchWithAuth } from '../../config/api';
+import { toast } from 'react-hot-toast';
 import {
   LayoutDashboard, Users, FileCheck, Briefcase, ClipboardList,
   Star, CheckCircle2, XCircle, AlertCircle, Bell, Clock, TrendingUp, Building2, Eye, EyeOff
@@ -16,25 +17,64 @@ function StatusBadge({ status }) {
   return (
     <span className={`badge ${map[status] || 'badge-pending'}`}>
       <span className="badge-dot" />
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {status?.charAt(0).toUpperCase() + status?.slice(1)}
     </span>
   );
 }
 
 export default function StaffDashboard({ activePage, currentUser }) {
-  const { mockData } = useAuth();
+  const [loading, setLoading] = useState(true);
   const [submissions, setSubmissions] = useState([]);
   const [applications, setApplications] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
+  const [placements, setPlacements] = useState([]);
+  const [attendance, setAttendance] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+
   const [showEvalModal, setShowEvalModal] = useState(false);
   const [evalForm, setEvalForm] = useState({ placement_id: '', evaluator_name: 'Prof. Alejandro Rivera', attendance: '', work: '', attitude: '', remarks: '' });
   const [reqFilter, setReqFilter] = useState('all');
 
   useEffect(() => {
-    setSubmissions(mockData.student_requirements || []);
-    setApplications(mockData.applications || []);
-    setEvaluations(mockData.evaluations || []);
-  }, [mockData.student_requirements, mockData.applications, mockData.evaluations]);
+    let isMounted = true;
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [fullDataRes, annRes, notifRes] = await Promise.all([
+          fetchWithAuth(`${API_BASE_URL}/staff/full-data`),
+          fetchWithAuth(`${API_BASE_URL}/admin/announcements`),
+          fetchWithAuth(`${API_BASE_URL}/admin/notifications?user_id=${currentUser.user_id}`)
+        ]);
+
+        if (!isMounted) return;
+
+        const fullData = fullDataRes.ok ? await fullDataRes.json() : { data: {} };
+        const annData = annRes.ok ? await annRes.json() : { data: [] };
+        const notData = notifRes.ok ? await notifRes.json() : { data: [] };
+
+        const fd = fullData.data || {};
+        setSubmissions(fd.requirements || []);
+        setApplications(fd.applications || []);
+        setEvaluations(fd.evaluations || []);
+        setPlacements(fd.placements || []);
+        setAttendance(fd.attendance || []);
+        setStudents(fd.students || []);
+        setCompanies(fd.companies || []);
+
+        setAnnouncements(annData.data || []);
+        setNotifications(notData.data || []);
+      } catch (err) {
+        console.error("Error loading staff dashboard data:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    loadData();
+    return () => { isMounted = false; };
+  }, [currentUser]);
 
   const pendingSubmissions = submissions.filter(s => s.status === 'pending');
   const pendingApps = applications.filter(a => a.status === 'pending');
@@ -58,11 +98,12 @@ export default function StaffDashboard({ activePage, currentUser }) {
             ? { ...s, status: newStatus, reviewed_by: currentUser?.user_id || 2, reviewed_at: new Date().toISOString(), remarks: newStatus === 'approved' ? 'Verified and approved' : 'Please resubmit with corrections' }
             : s
         ));
+        toast.success(`Requirement ${newStatus}`);
       } else {
-        alert(data.message || 'Failed to review requirement');
+        toast.error(data.message || 'Failed to review requirement');
       }
     } catch (error) {
-      alert('Server error while reviewing requirement');
+      toast.error('Server error while reviewing requirement');
     }
   };
 
@@ -83,11 +124,12 @@ export default function StaffDashboard({ activePage, currentUser }) {
             ? { ...a, status: 'accepted', approved_by: currentUser?.user_id || 2, approved_at: new Date().toISOString() }
             : a
         ));
+        toast.success('Application approved successfully!');
       } else {
-        alert(data.message || 'Failed to approve application');
+        toast.error(data.message || 'Failed to approve application');
       }
     } catch (error) {
-      alert('Server error while approving application');
+      toast.error('Server error while approving application');
     }
   };
 
@@ -103,11 +145,12 @@ export default function StaffDashboard({ activePage, currentUser }) {
         setApplications(applications.map(a =>
           a.application_id === application_id ? { ...a, status: 'rejected' } : a
         ));
+        toast.success('Application rejected.');
       } else {
-        alert(data.message || 'Failed to reject application');
+        toast.error(data.message || 'Failed to reject application');
       }
     } catch (error) {
-      alert('Server error while rejecting application');
+      toast.error('Server error while rejecting application');
     }
   };
 
@@ -117,7 +160,7 @@ export default function StaffDashboard({ activePage, currentUser }) {
     const attitude = parseFloat(evalForm.attitude || 0);
     
     if (att > 35 || work > 35 || attitude > 30) {
-      alert("Scores exceed maximum allowed values (Attendance: 35, Work: 35, Attitude: 30)");
+      toast.error("Scores exceed maximum allowed values (Attendance: 35, Work: 35, Attitude: 30)");
       return;
     }
     
@@ -149,33 +192,34 @@ export default function StaffDashboard({ activePage, currentUser }) {
           evaluated_at: new Date().toISOString()
         }]);
         setShowEvalModal(false);
+        setEvalForm({ placement_id: '', evaluator_name: 'Prof. Alejandro Rivera', attendance: '', work: '', attitude: '', remarks: '' });
+        toast.success('Evaluation submitted successfully!');
       } else {
-        alert(data.message || 'Failed to submit evaluation');
+        toast.error(data.message || 'Failed to submit evaluation');
       }
     } catch (error) {
-      alert('Server error while submitting evaluation');
+      toast.error('Server error while submitting evaluation');
     }
   };
 
-  const enrichedSubmissions = submissions.map(s => {
-    const student = mockData.students.find(st => st.student_id === s.student_id);
-    const reqType = mockData.requirement_types.find(r => r.requirement_id === s.requirement_id);
-    return { ...s, student_name: student?.full_name || s.student_name || '—', student_number: student?.student_number || s.student_number || '—', requirement_name: reqType?.name || s.requirement_name || '—' };
-  });
-
-  const enrichedApps = applications.map(a => {
-    const student = mockData.students.find(s => s.student_id === a.student_id || s.user_id === a.student_id);
-    const company = mockData.companies.find(c => c.company_id === a.company_id);
-    return { ...a, student_name: student?.full_name || a.student_name || '—', student_number: student?.student_number || a.student_number || '—', course: student?.course || a.course || '—', company_name: company?.company_name || a.company_name || '—', industry: company?.industry || a.industry || '—' };
-  });
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
+          <Clock size={32} />
+        </motion.div>
+        <span style={{ marginLeft: '12px' }}>Loading Staff Dashboard...</span>
+      </div>
+    );
+  }
 
   const pages = {
-    dashboard: <StaffOverview pendingSubmissions={pendingSubmissions} pendingApps={pendingApps} evaluations={evaluations} announcements={mockData.announcements} notifications={mockData.notifications.filter(n => n.user_id === currentUser?.user_id)} />,
+    dashboard: <StaffOverview pendingSubmissions={pendingSubmissions} pendingApps={pendingApps} evaluations={evaluations} announcements={announcements} notifications={notifications} />,
     profiling: <StudentProfilingView />,
-    requirements: <ReviewRequirementsView enrichedSubmissions={enrichedSubmissions} onReview={reviewRequirement} filter={reqFilter} setFilter={setReqFilter} />,
-    applications: <ApplicationsView enrichedApps={enrichedApps} onApprove={approveApplication} onReject={rejectApplication} />,
-    attendance: <AttendanceMonitorView placements={mockData.ojt_placements} students={mockData.students} companies={mockData.companies} attendance={mockData.attendance} />,
-    evaluations: <EvaluationsView evaluations={evaluations} placements={mockData.ojt_placements} students={mockData.students} onAddEval={() => setShowEvalModal(true)} />,
+    requirements: <ReviewRequirementsView enrichedSubmissions={submissions} onReview={reviewRequirement} filter={reqFilter} setFilter={setReqFilter} />,
+    applications: <ApplicationsView enrichedApps={applications} onApprove={approveApplication} onReject={rejectApplication} />,
+    attendance: <AttendanceMonitorView placements={placements} students={students} companies={companies} attendance={attendance} />,
+    evaluations: <EvaluationsView evaluations={evaluations} placements={placements} students={students} onAddEval={() => setShowEvalModal(true)} />,
     profile: <StaffProfileView currentUser={currentUser} />
   };
 
@@ -192,8 +236,8 @@ export default function StaffDashboard({ activePage, currentUser }) {
               <label className="form-label">Student Placement</label>
               <select className="form-input" value={evalForm.placement_id} onChange={e => setEvalForm({ ...evalForm, placement_id: e.target.value })}>
                 <option value="">Select a student placement</option>
-                {mockData.ojt_placements.map(p => {
-                  const s = mockData.students.find(st => st.student_id === p.student_id);
+                {placements.map(p => {
+                  const s = students.find(st => st.student_id === p.student_id);
                   return <option key={p.placement_id} value={p.placement_id}>{s ? s.full_name : `Placement #${p.placement_id}`}</option>
                 })}
               </select>
@@ -224,7 +268,7 @@ export default function StaffDashboard({ activePage, currentUser }) {
               <textarea className="form-textarea" placeholder="Optional remarks..." value={evalForm.remarks} onChange={e => setEvalForm({ ...evalForm, remarks: e.target.value })} style={{ minHeight: '80px' }} />
             </div>
             <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={() => {
-              if (!evalForm.placement_id) return alert('Please select a student placement');
+              if (!evalForm.placement_id) return toast.error('Please select a student placement');
               submitEvaluation();
             }}>
               <Star size={16} /> Save Evaluation
@@ -265,8 +309,8 @@ function StaffOverview({ pendingSubmissions, pendingApps, evaluations, announcem
         <motion.div className="bento-card col-span-6" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }}>
           <div className="card-header"><div className="card-title">Recent Notifications</div></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {notifications.length === 0 ? <div className="empty-state"><p>No notifications.</p></div> : notifications.map(n => (
-              <div key={n.notification_id} className={`notif-item ${n.is_read ? '' : 'unread'}`} style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+            {notifications.length === 0 ? <div className="empty-state"><p>No notifications.</p></div> : notifications.map((n, idx) => (
+              <div key={n.notification_id || idx} className={`notif-item ${n.is_read ? '' : 'unread'}`} style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                 <Bell size={18} color="var(--text-accent)" style={{ marginTop: 2 }} />
                 <div><div className="notif-message" style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{n.message}</div><div className="notif-time" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>{new Date(n.created_at).toLocaleString()}</div></div>
               </div>
@@ -277,8 +321,8 @@ function StaffOverview({ pendingSubmissions, pendingApps, evaluations, announcem
         <motion.div className="bento-card col-span-6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 }}>
           <div className="card-header"><div className="card-title">Announcements</div></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {announcements.map(a => (
-              <div key={a.announcement_id} className="announcement-card" style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px' }}>
+            {announcements.map((a, idx) => (
+              <div key={a.announcement_id || idx} className="announcement-card" style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px' }}>
                 <div className="announcement-title" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{a.title}</div>
                 <div className="announcement-content" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '8px 0' }}>{a.content}</div>
                 <div className="announcement-date" style={{ fontSize: '0.7rem', color: 'var(--text-accent)' }}>{new Date(a.created_at).toLocaleDateString()}</div>
@@ -470,7 +514,6 @@ function StudentProfilingView() {
     password: ''
   });
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState({ type: '', text: '' });
   const [showPassword, setShowPassword] = useState(false);
 
   const handleNameChange = (field, value) => {
@@ -489,10 +532,9 @@ function StudentProfilingView() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setMsg({ type: '', text: '' });
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/register', {
+      const res = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -507,13 +549,13 @@ function StudentProfilingView() {
       });
       const data = await res.json();
       if (data.success) {
-        setMsg({ type: 'success', text: `Account created successfully! Admin approval is pending. (Email: ${formData.email})` });
+        toast.success(`Account created successfully! Admin approval is pending. (Email: ${formData.email})`);
         setFormData({ student_number: '', first_name: '', middle_name: '', last_name: '', course: '', year_section: '', gender: '', email: '', password: '' });
       } else {
-        setMsg({ type: 'error', text: data.message || 'Registration failed' });
+        toast.error(data.message || 'Registration failed');
       }
     } catch (err) {
-      setMsg({ type: 'error', text: 'Server error while registering student.' });
+      toast.error('Server error while registering student.');
     }
     setLoading(false);
   };
@@ -582,19 +624,6 @@ function StudentProfilingView() {
             </div>
           </div>
 
-          {msg.text && (
-            <div style={{
-              padding: '12px',
-              borderRadius: '8px',
-              fontSize: '0.9rem',
-              backgroundColor: msg.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(244, 63, 94, 0.1)',
-              color: msg.type === 'success' ? '#10b981' : '#f43f5e',
-              border: `1px solid ${msg.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(244, 63, 94, 0.3)'}`
-            }}>
-              {msg.text}
-            </div>
-          )}
-
           <button type="submit" className="btn btn-primary" disabled={loading} style={{ justifyContent: 'center' }}>
             {loading ? 'Creating...' : 'Create Student Profile'}
           </button>
@@ -611,7 +640,6 @@ function StaffProfileView({ currentUser }) {
     email: currentUser?.email || '',
     password: ''
   });
-  const [msg, setMsg] = useState({ type: '', text: '' });
   const { updateCurrentUser } = useAuth();
 
   useEffect(() => {
@@ -626,7 +654,7 @@ function StaffProfileView({ currentUser }) {
   const handleSave = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/auth/profile', {
+      const res = await fetchWithAuth(`${API_BASE_URL}/auth/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -640,13 +668,13 @@ function StaffProfileView({ currentUser }) {
       const data = await res.json();
       if (data.success) {
         updateCurrentUser(data.user);
-        setMsg({ type: 'success', text: 'Profile updated successfully!' });
+        toast.success('Profile updated successfully!');
         setFormData(prev => ({ ...prev, password: '' }));
       } else {
-        setMsg({ type: 'error', text: data.message || 'Unable to update profile' });
+        toast.error(data.message || 'Unable to update profile');
       }
     } catch (error) {
-      setMsg({ type: 'error', text: 'Server error while updating profile' });
+      toast.error('Server error while updating profile');
     }
   };
 
@@ -658,11 +686,6 @@ function StaffProfileView({ currentUser }) {
       </div>
       <div className="card animate-fade-in-up delay-100" style={{ maxWidth: '600px' }}>
         <div className="card-header"><div className="card-title">Edit Profile</div></div>
-        {msg.text && (
-          <div style={{ padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.86rem', background: msg.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(244,63,94,0.1)', color: msg.type === 'success' ? 'var(--status-approved)' : 'var(--status-rejected)' }}>
-            {msg.text}
-          </div>
-        )}
         <form onSubmit={handleSave}>
           <div style={{ display: 'flex', gap: '16px' }}>
             <div className="form-group" style={{ flex: 1 }}>

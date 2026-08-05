@@ -5,6 +5,7 @@ const { verifyToken, isStaff } = require('../middleware/authMiddleware');
 
 router.use(verifyToken, isStaff);
 router.get('/dashboard', staffController.getDashboardData);
+router.get('/full-data', staffController.getFullData);
 router.get('/students', staffController.getStudentProfiles);
 router.get('/requirements/pending', staffController.getPendingRequirements);
 router.post('/requirements/review', staffController.reviewRequirement);

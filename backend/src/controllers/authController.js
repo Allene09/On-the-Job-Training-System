@@ -1,4 +1,4 @@
-const { pool } = require('../config/db');
+const AuthModel = require('../models/AuthModel');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
@@ -6,8 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_development_on
 exports.login = async (req, res) => {
   try {
     const { email, password, role } = req.body;
-    const [userRows] = await pool.query('CALL sp_SearchUsers(?, NULL)', [role || '']);
-    const users = userRows[0];
+    const users = await AuthModel.searchUsers(role);
     const userMatch = users.find(u => u.email === email);
 
     if (!userMatch) {
@@ -28,8 +27,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, message: "Invalid password" });
     }
 
-    const [detailsRows] = await pool.query('CALL sp_GetUserDetails(?, ?)', [user.user_id, user.role]);
-    const profile = detailsRows[0][0] || null;
+    const profile = await AuthModel.getUserDetails(user.user_id, user.role);
 
     if (user.status === 'pending_admin_approval') {
       return res.status(403).json({ success: false, message: "Account is pending administrator approval." });
@@ -62,9 +60,8 @@ exports.login = async (req, res) => {
 
 exports.registerStudent = async (req, res) => {
   try {
-    const { email, password, full_name, gender, course, year_section, year_level } = req.body;
-    const [existingRows] = await pool.query('CALL sp_GetUserByEmail(?)', [email]);
-    const existing = existingRows[0];
+    const { email, password, full_name, gender, course, year_section, year_level, company_id } = req.body;
+    const existing = await AuthModel.getUserByEmail(email);
     
     if (existing.length > 0) {
       return res.status(400).json({ success: false, message: "Email already registered" });
@@ -79,14 +76,25 @@ exports.registerStudent = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await pool.query(
-      'CALL sp_RegisterStudent(?, ?, ?, ?, ?, ?, ?)',
-      [email, hashedPassword, student_number, full_name, gender, course, resolvedYearLevel]
-    );
+    await AuthModel.registerStudent({
+      email, hashedPassword, student_number, full_name, gender, course, resolvedYearLevel
+    });
+
+    if (company_id) {
+      const userRows = await AuthModel.getUserByEmail(email);
+      const user = userRows[0];
+      if (user) {
+        const details = await AuthModel.getUserDetails(user.user_id, 'student');
+        if (details && details.student_id) {
+          const StudentModel = require('../models/StudentModel');
+          await StudentModel.applyToCompany(details.student_id, company_id);
+        }
+      }
+    }
 
     return res.status(201).json({
       success: true,
-      message: "Student registered successfully (SP executed)",
+      message: "Student registered successfully",
       data: { email, full_name }
     });
   } catch (error) {
@@ -101,10 +109,7 @@ exports.changePassword = async (req, res) => {
     
     const hashedPassword = await bcrypt.hash(new_password, 10);
 
-    const [result] = await pool.query(
-      'CALL sp_ChangeUserPassword(?, ?)',
-      [user_id, hashedPassword]
-    );
+    const result = await AuthModel.changeUserPassword(user_id, hashedPassword);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ success: false, message: "User not found" });
@@ -139,28 +144,14 @@ exports.updateProfile = async (req, res) => {
 
     const hashedPassword = password ? await bcrypt.hash(password, 10) : '';
 
-    await pool.query(
-      'CALL sp_UpdateUserProfile(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [
-        user_id,
-        role,
-        email,
-        hashedPassword,
-        full_name || '',
-        student_number || '',
-        course || '',
-        year_level || '',
-        gender || '',
-        employee_id || '',
-        department || ''
-      ]
-    );
+    await AuthModel.updateUserProfile({
+      user_id, role, email, hashedPassword, full_name, student_number, course, year_level, gender, employee_id, department
+    });
 
-    const [detailsRows] = await pool.query('CALL sp_GetUserDetails(?, ?)', [user_id, role]);
-    const profile = detailsRows[0][0] || null;
+    const profile = await AuthModel.getUserDetails(user_id, role);
 
-    const [userRows] = await pool.query('CALL sp_GetUserByEmail(?)', [email]);
-    const user = userRows[0][0] || { user_id, email, role, status: 'active', requires_password_change: false };
+    const userRows = await AuthModel.getUserByEmail(email);
+    const user = userRows[0] || { user_id, email, role, status: 'active', requires_password_change: false };
 
     return res.json({
       success: true,

@@ -39,8 +39,32 @@ class AdminModel {
     return rows[0];
   }
 
-  static async approveAccount(userId) {
+  static async approveAccount(userId, adminId = 1) {
     await pool.query('CALL sp_ApproveStudentAccount(?)', [userId]);
+
+    // Check if user is a student to auto-approve pending company applications
+    const [userRows] = await pool.query('SELECT role FROM users WHERE user_id = ?', [userId]);
+    const role = userRows[0]?.role;
+    
+    if (role === 'student') {
+      const [studentRows] = await pool.query('SELECT student_id, required_hours FROM students WHERE user_id = ?', [userId]);
+      const student = studentRows[0];
+      if (student) {
+        const [appRows] = await pool.query("SELECT application_id FROM applications WHERE student_id = ? AND status = 'pending'", [student.student_id]);
+        
+        for (const app of appRows) {
+          const startDate = new Date().toISOString().split('T')[0];
+          const endDate = new Date();
+          endDate.setMonth(endDate.getMonth() + 4);
+          const endDateStr = endDate.toISOString().split('T')[0];
+          
+          await pool.query(
+            'CALL sp_ApproveApplication(?, ?, ?, ?, ?)',
+            [app.application_id, adminId, startDate, endDateStr, student.required_hours || 486]
+          );
+        }
+      }
+    }
   }
 
   static async createUser(data) {

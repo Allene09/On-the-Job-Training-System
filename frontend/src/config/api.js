@@ -8,6 +8,10 @@ export const fetchWithAuth = async (url, options = {}) => {
     ...options.headers
   };
   
+  if (options.body instanceof FormData) {
+    delete headers['Content-Type'];
+  }
+  
   return fetch(url, { ...options, headers });
 };
 

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import API_BASE_URL from './config/api';
 import LandingScreen from './screens/LandingScreen';
 import LoginScreen from './screens/LoginScreen';
 import StudentDashboard from './screens/Student/StudentDashboard';
@@ -141,10 +142,29 @@ function Sidebar({ navItems, activePage, setActivePage, currentUser, onLogout, o
 }
 
 function AppShell() {
-  const { currentUser, logout, mockData } = useAuth();
+  const { currentUser, logout } = useAuth();
   const [activePage, setActivePage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [unreadNotifs, setUnreadNotifs] = useState([]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const fetchNotifs = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/admin/notifications?user_id=${currentUser.user_id}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+          setUnreadNotifs(data.data.filter(n => !n.is_read));
+        }
+      } catch (err) {
+        console.error('Failed to fetch notifications', err);
+      }
+    };
+    fetchNotifs();
+  }, [currentUser]);
 
   if (!currentUser) {
     if (showLogin) return <LoginScreen onBack={() => setShowLogin(false)} />;
@@ -158,8 +178,6 @@ function AppShell() {
     staff: StaffDashboard,
     admin: AdminDashboard
   }[currentUser.role];
-
-  const unreadNotifs = mockData?.notifications?.filter(n => n.user_id === currentUser?.user_id && !n.is_read) || [];
 
   return (
     <div className="app-container">

@@ -26,6 +26,13 @@ exports.recordAttendance = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Cannot add attendance to a completed or inactive placement.' });
     }
 
+    const existingRecords = await AttendanceModel.getByPlacementId(placement_id);
+    const isDuplicate = existingRecords.some(r => r.log_date === log_date);
+    
+    if (isDuplicate) {
+      return res.status(400).json({ success: false, message: 'Attendance already recorded for this date' });
+    }
+
     const newRecord = await AttendanceModel.addRecord(placement_id, log_date, time_in, time_out, parseFloat(hours_rendered), remarks || null);
 
     return res.status(201).json({

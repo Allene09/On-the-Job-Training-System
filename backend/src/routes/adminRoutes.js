@@ -11,5 +11,5 @@ router.post('/approve-account', verifyToken, isAdmin, adminController.approveAcc
 router.post('/users', verifyToken, isAdmin, adminController.createUser);
 router.get('/announcements', verifyToken, adminController.getAnnouncements);
 router.get('/notifications', verifyToken, adminController.getNotifications);
-
+router.get('/placements', verifyToken, isAdmin, adminController.getPlacements);
 module.exports = router;

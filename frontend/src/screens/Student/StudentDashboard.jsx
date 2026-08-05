@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import API_BASE_URL, { fetchWithAuth } from '../../config/api';
+import { toast } from 'react-hot-toast';
 import {
   LayoutDashboard, FileText, Building2, Clock, BookOpen,
   TrendingUp, Bell, Star, CheckCircle2, XCircle, AlertCircle,
@@ -17,13 +18,13 @@ function StatusBadge({ status }) {
   return (
     <span className={`badge ${map[status] || 'badge-pending'}`}>
       <span className="badge-dot" />
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {status?.charAt(0).toUpperCase() + status?.slice(1)}
     </span>
   );
 }
 
 function ProgressBar({ value, max, label }) {
-  const pct = Math.min(Math.round((value / max) * 100), 100);
+  const pct = max > 0 ? Math.min(Math.round((value / max) * 100), 100) : 0;
   return (
     <div className="progress-container">
       <div className="progress-label">
@@ -42,60 +43,115 @@ function ProgressBar({ value, max, label }) {
 }
 
 export default function StudentDashboard({ activePage, setActivePage }) {
-  const { currentUser, mockData } = useAuth();
-  const [showDTRModal, setShowDTRModal] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [dtrForm, setDtrForm] = useState({ date: '', time_in: '08:00', time_out: '17:00' });
-  const [reportForm, setReportForm] = useState({ week: '', narrative: '' });
+  const { currentUser } = useAuth();
+  
+  const [loading, setLoading] = useState(true);
+  const [student, setStudent] = useState(currentUser?.profile || {});
+  const [placement, setPlacement] = useState(null);
+  const [company, setCompany] = useState(null);
   const [attendance, setAttendance] = useState([]);
   const [requirements, setRequirements] = useState([]);
   const [applications, setApplications] = useState([]);
   const [reports, setReports] = useState([]);
+  const [evaluations, setEvaluations] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [reqTypes, setReqTypes] = useState([]);
+
+  const [showDTRModal, setShowDTRModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  
+  const [dtrForm, setDtrForm] = useState({ date: '', time_in: '08:00', time_out: '17:00' });
+  const [reportForm, setReportForm] = useState({ week: '', narrative: '' });
+  
+  const [dtrError, setDtrError] = useState('');
+  const [reportError, setReportError] = useState('');
 
   useEffect(() => {
-    setAttendance(mockData.attendance || []);
-    setRequirements(mockData.student_requirements || []);
-    setApplications(mockData.applications || []);
-    setReports(mockData.weekly_reports || []);
-  }, [mockData.attendance, mockData.student_requirements, mockData.applications, mockData.weekly_reports]);
+    let isMounted = true;
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const studentId = currentUser?.profile?.student_id || 1;
 
-  const student = currentUser?.profile?.student_id
-    ? {
-      ...currentUser.profile,
-      ...(mockData.students.find(s => s.student_id === currentUser.profile.student_id) || {})
-    }
-    : mockData.students.find(s => s.user_id === currentUser?.user_id) || mockData.students[0] || null;
+        const [
+          dashboardRes,
+          companiesRes,
+          reqsRes,
+          applicationsRes,
+          announcementsRes,
+          reportsRes,
+          notifsRes,
+          reqTypesRes
+        ] = await Promise.all([
+          fetchWithAuth(`${API_BASE_URL}/student/dashboard`),
+          fetchWithAuth(`${API_BASE_URL}/companies`),
+          fetchWithAuth(`${API_BASE_URL}/student/requirements?student_id=${studentId}`),
+          fetchWithAuth(`${API_BASE_URL}/student/placements?student_id=${studentId}`),
+          fetchWithAuth(`${API_BASE_URL}/admin/announcements`),
+          fetchWithAuth(`${API_BASE_URL}/student/weekly-reports?student_id=${studentId}`),
+          fetchWithAuth(`${API_BASE_URL}/admin/notifications?user_id=${currentUser.user_id}`),
+          fetchWithAuth(`${API_BASE_URL}/requirements/types`)
+        ]);
 
-  useEffect(() => {
-    const pending = localStorage.getItem('pendingApplication');
-    if (pending && student?.student_id) {
-      // Small timeout to ensure everything is mounted
-      setTimeout(() => {
-        applyCompany(parseInt(pending));
-        localStorage.removeItem('pendingApplication');
-      }, 500);
-    }
-  }, [student?.student_id]);
+        if (!isMounted) return;
 
-  const placement = mockData.ojt_placements.find(p => p.student_id === student?.student_id) || null;
-  const company = mockData.companies.find(c => c.company_id === placement?.company_id);
-  const notifications = mockData.notifications.filter(n => n.user_id === currentUser.user_id);
+        const dbData = dashboardRes.ok ? await dashboardRes.json() : { data: {} };
+        const compData = companiesRes.ok ? await companiesRes.json() : { data: [] };
+        const reqData = reqsRes.ok ? await reqsRes.json() : { data: [] };
+        const appData = applicationsRes.ok ? await applicationsRes.json() : { data: [] };
+        const annData = announcementsRes.ok ? await announcementsRes.json() : { data: [] };
+        const repData = reportsRes.ok ? await reportsRes.json() : { data: [] };
+        const notData = notifsRes.ok ? await notifsRes.json() : { data: [] };
+        const rtData = reqTypesRes.ok ? await reqTypesRes.json() : { data: [] };
+
+        const p = dbData.data.active_placement || null;
+        setPlacement(p);
+        setAttendance(dbData.data.recent_attendance || []);
+        setEvaluations(dbData.data.recent_evaluations || []);
+        
+        const allCompanies = compData.data || [];
+        setCompanies(allCompanies);
+        if (p) {
+          setCompany(allCompanies.find(c => c.company_id === p.company_id) || null);
+        }
+
+        setRequirements(reqData.data || []);
+        setApplications(appData.data || []);
+        setAnnouncements(annData.data || []);
+        setReports(repData.data || []);
+        setNotifications(notData.data || []);
+        setReqTypes(rtData.data || []);
+
+      } catch (err) {
+        console.error("Error loading student data:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    loadData();
+    return () => { isMounted = false; };
+  }, [currentUser]);
+
   const unreadNotifs = notifications.filter(n => !n.is_read);
-
-  // Build requirement checklist
-  const reqChecklist = mockData.requirement_types.map(rt => {
-    const sub = requirements.find(sr => sr.student_id === student?.student_id && sr.requirement_id === rt.requirement_id);
-    return { ...rt, submission: sub || null };
-  });
 
   // Total hours from attendance for this student
   const totalHours = attendance
     .filter(a => a.placement_id === placement?.placement_id)
-    .reduce((sum, a) => sum + (a.hours_rendered || 0), 0);
+    .reduce((sum, a) => sum + (parseFloat(a.hours_rendered) || 0), 0);
   const hoursRendered = parseFloat(totalHours.toFixed(2));
 
   const logDTR = async () => {
-    if (!dtrForm.date || !dtrForm.time_in || !dtrForm.time_out || !placement) return;
+    setDtrError('');
+    if (!dtrForm.date || !dtrForm.time_in || !dtrForm.time_out) {
+      setDtrError('All fields are required.');
+      return;
+    }
+    if (!placement) {
+      setDtrError('No active placement found to log attendance for.');
+      return;
+    }
     try {
       const res = await fetchWithAuth(`${API_BASE_URL}/attendance/record`, {
         method: 'POST',
@@ -109,19 +165,28 @@ export default function StudentDashboard({ activePage, setActivePage }) {
       });
       const data = await res.json();
       if (data.success) {
-        setAttendance([...attendance, data.data]);
+        setAttendance([data.data, ...attendance]);
         setShowDTRModal(false);
         setDtrForm({ date: '', time_in: '08:00', time_out: '17:00' });
+        toast.success('DTR logged successfully!');
       } else {
-        alert(data.message || 'Failed to log DTR');
+        setDtrError(data.message || 'Failed to log DTR');
       }
     } catch (error) {
-      alert('Server error while logging DTR');
+      setDtrError('Server error while logging DTR');
     }
   };
 
   const submitReport = async () => {
-    if (!reportForm.week || !reportForm.narrative || !placement) return;
+    setReportError('');
+    if (!reportForm.week || !reportForm.narrative) {
+      setReportError('Week number and narrative are required.');
+      return;
+    }
+    if (!placement) {
+      setReportError('No active placement found.');
+      return;
+    }
     try {
       const res = await fetchWithAuth(`${API_BASE_URL}/student/weekly-report`, {
         method: 'POST',
@@ -134,7 +199,7 @@ export default function StudentDashboard({ activePage, setActivePage }) {
       });
       const data = await res.json();
       if (data.success) {
-        setReports([...reports, {
+        setReports([{
           report_id: data.data?.report_id || reports.length + 1,
           placement_id: placement.placement_id,
           week_number: parseInt(reportForm.week),
@@ -142,20 +207,19 @@ export default function StudentDashboard({ activePage, setActivePage }) {
           status: 'submitted',
           submitted_at: new Date().toISOString(),
           reviewed_by: null
-        }]);
+        }, ...reports]);
         setShowReportModal(false);
         setReportForm({ week: '', narrative: '' });
+        toast.success('Weekly report submitted!');
       } else {
-        alert(data.message || 'Failed to submit report');
+        setReportError(data.message || 'Failed to submit report');
       }
     } catch (error) {
-      alert('Server error while submitting report');
+      setReportError('Server error while submitting report');
     }
   };
 
   const applyCompany = async (company_id) => {
-    const exists = applications.find(a => a.student_id === student?.student_id && a.company_id === company_id);
-    if (exists) return;
     try {
       const res = await fetchWithAuth(`${API_BASE_URL}/student/apply`, {
         method: 'POST',
@@ -169,21 +233,18 @@ export default function StudentDashboard({ activePage, setActivePage }) {
           student_id: student?.student_id,
           company_id,
           status: 'pending',
-          applied_at: new Date().toISOString(),
-          approved_by: null,
-          approved_at: null
+          applied_at: new Date().toISOString()
         }]);
+        toast.success('Application submitted successfully!');
       } else {
-        alert(data.message || 'Failed to apply');
+        toast.error(data.message || 'Failed to apply');
       }
     } catch (error) {
-      alert('Server error while applying to company');
+      toast.error('Server error while applying to company');
     }
   };
 
   const submitRequirement = async (req_id) => {
-    const exists = requirements.find(r => r.student_id === student?.student_id && r.requirement_id === req_id);
-    if (exists) return;
     const file_path = `/uploads/doc_${Date.now()}.pdf`;
     try {
       const res = await fetchWithAuth(`${API_BASE_URL}/student/requirements/submit`, {
@@ -193,33 +254,42 @@ export default function StudentDashboard({ activePage, setActivePage }) {
       });
       const data = await res.json();
       if (data.success) {
-        setRequirements([...requirements, {
-          submission_id: requirements.length + 1,
-          student_id: student?.student_id,
-          requirement_id: req_id,
-          file_path,
-          status: 'pending',
-          remarks: null,
-          reviewed_by: null,
-          submitted_at: new Date().toISOString(),
-          reviewed_at: null
-        }]);
+        setRequirements(requirements.map(r => r.requirement_id === req_id ? {
+          ...r, submission: {
+            submission_id: Date.now(),
+            file_path,
+            status: 'pending',
+            submitted_at: new Date().toISOString()
+          }
+        } : r));
+        toast.success('Requirement submitted!');
       } else {
-        alert(data.message || 'Failed to submit requirement');
+        toast.error(data.message || 'Failed to submit requirement');
       }
     } catch (error) {
-      alert('Server error while submitting requirement');
+      toast.error('Server error while submitting requirement');
     }
   };
 
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
+          <Clock size={32} />
+        </motion.div>
+        <span style={{ marginLeft: '12px' }}>Loading Dashboard...</span>
+      </div>
+    );
+  }
+
   const pages = {
-    dashboard: <DashboardView student={student || { full_name: currentUser?.email || 'Student', course: 'N/A', year_level: 'N/A', student_number: 'N/A', required_hours: 0 }} placement={placement} company={company} hoursRendered={hoursRendered} notifications={notifications} unreadNotifs={unreadNotifs} evaluations={mockData.evaluations} announcements={mockData.announcements} />,
-    profile: <ProfileView student={student || {}} currentUser={currentUser} />,
-    requirements: <RequirementsView reqChecklist={reqChecklist} onSubmit={submitRequirement} />,
-    companies: <CompaniesView companies={mockData.companies} applications={applications} onApply={applyCompany} student={student} />,
-    attendance: <AttendanceView attendance={attendance.filter(a => a.placement_id === placement?.placement_id)} hoursRendered={hoursRendered} required={student.required_hours} onAddDTR={() => setShowDTRModal(true)} />,
+    dashboard: <DashboardView student={student} placement={placement} company={company} hoursRendered={hoursRendered} notifications={notifications} unreadNotifs={unreadNotifs} evaluations={evaluations} announcements={announcements} />,
+    profile: <ProfileView student={student} currentUser={currentUser} setStudent={setStudent} />,
+    requirements: <RequirementsView reqChecklist={requirements} onSubmit={submitRequirement} />,
+    companies: <CompaniesView companies={companies} applications={applications} onApply={applyCompany} student={student} />,
+    attendance: <AttendanceView attendance={attendance} hoursRendered={hoursRendered} required={student.required_hours} onAddDTR={() => setShowDTRModal(true)} />,
     reports: <ReportsView reports={reports} onAdd={() => setShowReportModal(true)} />,
-    progress: <ProgressView placement={placement} hoursRendered={hoursRendered} evaluations={mockData.evaluations} company={company} />
+    progress: <ProgressView placement={placement} hoursRendered={hoursRendered} evaluations={evaluations} company={company} />
   };
 
   return (
@@ -232,6 +302,11 @@ export default function StudentDashboard({ activePage, setActivePage }) {
               <h2 className="modal-title">Log Daily Time Record</h2>
               <button className="btn btn-ghost btn-sm" onClick={() => setShowDTRModal(false)}>✕</button>
             </div>
+            {dtrError && (
+              <div style={{ padding: '10px', background: 'rgba(244,63,94,0.1)', color: 'var(--status-rejected)', borderRadius: '8px', marginBottom: '16px', fontSize: '0.85rem' }}>
+                {dtrError}
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">Date</label>
               <input type="date" className="form-input" value={dtrForm.date} onChange={e => setDtrForm({ ...dtrForm, date: e.target.value })} />
@@ -261,6 +336,11 @@ export default function StudentDashboard({ activePage, setActivePage }) {
               <h2 className="modal-title">Submit Weekly Narrative Report</h2>
               <button className="btn btn-ghost btn-sm" onClick={() => setShowReportModal(false)}>✕</button>
             </div>
+            {reportError && (
+              <div style={{ padding: '10px', background: 'rgba(244,63,94,0.1)', color: 'var(--status-rejected)', borderRadius: '8px', marginBottom: '16px', fontSize: '0.85rem' }}>
+                {reportError}
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">Week Number</label>
               <input type="number" className="form-input" placeholder="e.g. 2" min="1" value={reportForm.week} onChange={e => setReportForm({ ...reportForm, week: e.target.value })} />
@@ -287,13 +367,16 @@ export default function StudentDashboard({ activePage, setActivePage }) {
 
 function DashboardView({ student, placement, company, hoursRendered, notifications, unreadNotifs, evaluations, announcements }) {
   const latestEval = evaluations[evaluations.length - 1];
-  const progress = placement ? Math.min(Math.round((hoursRendered / student.required_hours) * 100), 100) : 0;
+  const progress = placement && student?.required_hours ? Math.min(Math.round((hoursRendered / student.required_hours) * 100), 100) : 0;
+  
+  const requiredHours = student?.required_hours || 0;
+  const hoursRemaining = requiredHours - hoursRendered > 0 ? (requiredHours - hoursRendered).toFixed(1) : 0;
 
   return (
     <>
       <div className="page-header">
-        <h1>Welcome back, {student.full_name.split(' ')[0]} 👋</h1>
-        <p>{student.course} · {student.year_level} · {student.student_number}</p>
+        <h1>Welcome back, {student?.full_name?.split(' ')[0] || 'Student'} 👋</h1>
+        <p>{student?.course || 'N/A'} · {student?.year_level || 'N/A'} · {student?.student_number || 'N/A'}</p>
       </div>
 
       <div className="bento-grid">
@@ -308,7 +391,7 @@ function DashboardView({ student, placement, company, hoursRendered, notificatio
         <motion.div className="bento-card col-span-3 stat-card purple" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <div className="stat-icon purple"><Clock size={24} /></div>
           <div>
-            <div className="stat-value" style={{ fontSize: '2.5rem' }}>{student.required_hours - hoursRendered > 0 ? (student.required_hours - hoursRendered).toFixed(1) : 0}h</div>
+            <div className="stat-value" style={{ fontSize: '2.5rem' }}>{hoursRemaining}h</div>
             <div className="stat-label">Hours Remaining</div>
           </div>
         </motion.div>
@@ -341,7 +424,7 @@ function DashboardView({ student, placement, company, hoursRendered, notificatio
           </div>
           {placement ? (
             <>
-              <ProgressBar value={hoursRendered} max={student.required_hours} label="OJT Hours Completion" />
+              <ProgressBar value={hoursRendered} max={requiredHours} label="OJT Hours Completion" />
               <div className="divider" style={{ margin: '24px 0', borderColor: 'var(--color-border)' }} />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 <div><div style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Start Date</div>{placement.start_date}</div>
@@ -498,7 +581,7 @@ function CompaniesView({ companies, applications, onApply, student }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
           {filtered.map(c => {
             const isFull = c.slots_available === 0;
-            const app = applications.find(a => a.student_id === student.student_id && a.company_id === c.company_id);
+            const app = applications.find(a => a.student_id === student?.student_id && a.company_id === c.company_id);
             return (
               <div key={c.company_id} className="company-card" style={{ opacity: isFull ? 0.72 : 1, position: 'relative' }}>
 
@@ -510,7 +593,7 @@ function CompaniesView({ companies, applications, onApply, student }) {
                 )}
 
                 {/* Company Photo */}
-                <div style={{ height: '120px', borderRadius: '12px 12px 0 0', background: `url(${c.photo_url || ''}) center/cover no-repeat`, backgroundColor: '#1e293b', marginBottom: '12px', marginTop: '-16px', marginLeft: '-16px', paddingRight: '32px', width: 'calc(100% + 32px)' }} />
+                <div style={{ height: '120px', borderRadius: '12px 12px 0 0', background: `url(${c.photo_url ? API_BASE_URL.replace('/api', '') + c.photo_url : ''}) center/cover no-repeat`, backgroundColor: '#1e293b', marginBottom: '12px', marginTop: '-16px', marginLeft: '-16px', paddingRight: '32px', width: 'calc(100% + 32px)' }} />
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div>
@@ -589,7 +672,7 @@ function AttendanceView({ attendance, hoursRendered, required, onAddDTR }) {
       </div>
 
       <div className="card" style={{ marginBottom: '20px' }}>
-        <ProgressBar value={hoursRendered} max={required} label="Total Hours Rendered" />
+        <ProgressBar value={hoursRendered} max={required || 0} label="Total Hours Rendered" />
       </div>
 
       <div className="card">
@@ -610,8 +693,8 @@ function AttendanceView({ attendance, hoursRendered, required, onAddDTR }) {
               </tr>
             </thead>
             <tbody>
-              {sorted.map(a => (
-                <tr key={a.attendance_id}>
+              {sorted.map((a, i) => (
+                <tr key={a.attendance_id || i}>
                   <td>{a.log_date}</td>
                   <td>{a.time_in}</td>
                   <td>{a.time_out}</td>
@@ -645,8 +728,8 @@ function ReportsView({ reports, onAdd }) {
         {reports.length === 0 ? (
           <div className="card empty-state"><p>No reports submitted yet.</p></div>
         ) : (
-          reports.map(r => (
-            <div key={r.report_id} className="card">
+          reports.map((r, i) => (
+            <div key={r.report_id || i} className="card">
               <div className="card-header">
                 <div>
                   <div className="card-title">Week {r.week_number} Report</div>
@@ -670,7 +753,6 @@ function ReportsView({ reports, onAdd }) {
 
 function ProgressView({ placement, hoursRendered, evaluations, company }) {
   const latest = evaluations[evaluations.length - 1];
-  const maxScore = 100;
 
   return (
     <>
@@ -738,14 +820,14 @@ function ProgressView({ placement, hoursRendered, evaluations, company }) {
   );
 }
 
-function ProfileView({ student, currentUser }) {
+function ProfileView({ student, currentUser, setStudent }) {
   const [formData, setFormData] = useState({
-    first_name: student.full_name ? student.full_name.split(' ')[0] : '',
-    last_name: student.full_name ? student.full_name.split(' ').slice(1).join(' ') : '',
-    course: student.course || '',
-    year_section: student.year_level || '',
-    gender: student.gender || '',
-    email: currentUser.email || '',
+    first_name: student?.full_name ? student.full_name.split(' ')[0] : '',
+    last_name: student?.full_name ? student.full_name.split(' ').slice(1).join(' ') : '',
+    course: student?.course || '',
+    year_section: student?.year_level || '',
+    gender: student?.gender || '',
+    email: currentUser?.email || '',
     password: ''
   });
   const [msg, setMsg] = useState({ type: '', text: '' });
@@ -753,20 +835,20 @@ function ProfileView({ student, currentUser }) {
 
   useEffect(() => {
     setFormData({
-      first_name: student.full_name ? student.full_name.split(' ')[0] : '',
-      last_name: student.full_name ? student.full_name.split(' ').slice(1).join(' ') : '',
-      course: student.course || '',
-      year_section: student.year_level || '',
-      gender: student.gender || '',
-      email: currentUser.email || '',
+      first_name: student?.full_name ? student.full_name.split(' ')[0] : '',
+      last_name: student?.full_name ? student.full_name.split(' ').slice(1).join(' ') : '',
+      course: student?.course || '',
+      year_section: student?.year_level || '',
+      gender: student?.gender || '',
+      email: currentUser?.email || '',
       password: ''
     });
-  }, [student, currentUser.email]);
+  }, [student, currentUser?.email]);
 
   const handleSave = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/auth/profile', {
+      const res = await fetchWithAuth(`${API_BASE_URL}/auth/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -778,12 +860,13 @@ function ProfileView({ student, currentUser }) {
           course: formData.course,
           year_level: formData.year_section,
           gender: formData.gender,
-          student_number: student.student_number || ''
+          student_number: student?.student_number || ''
         })
       });
       const data = await res.json();
       if (data.success) {
         updateCurrentUser(data.user);
+        setStudent(data.user.profile);
         setMsg({ type: 'success', text: 'Profile updated successfully!' });
         setFormData(prev => ({ ...prev, password: '' }));
       } else {
