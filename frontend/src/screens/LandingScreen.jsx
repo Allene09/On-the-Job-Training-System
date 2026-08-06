@@ -43,6 +43,13 @@ export default function LandingScreen({ onGetStarted }) {
   const [companySearch, setCompanySearch] = useState('');
   const [appliedIds, setAppliedIds] = useState([]); // track which company IDs the visitor applied to
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [companySearch]);
+
   const [showRegModal, setShowRegModal] = useState(false);
   const [applyingCompanyId, setApplyingCompanyId] = useState(null);
   const [regForm, setRegForm] = useState({
@@ -84,6 +91,11 @@ export default function LandingScreen({ onGetStarted }) {
     c.industry.toLowerCase().includes(companySearch.toLowerCase()) ||
     (c.address || '').toLowerCase().includes(companySearch.toLowerCase())
   );
+
+  const indexOfLastCompany = currentPage * itemsPerPage;
+  const indexOfFirstCompany = indexOfLastCompany - itemsPerPage;
+  const currentCompanies = filteredCompanies.slice(indexOfFirstCompany, indexOfLastCompany);
+  const totalPages = Math.ceil(filteredCompanies.length / itemsPerPage);
 
   const handleApply = (company_id) => {
     if (appliedIds.includes(company_id)) return;
@@ -357,14 +369,14 @@ export default function LandingScreen({ onGetStarted }) {
           )}
 
           {/* Company Cards Grid */}
-          {filteredCompanies.length === 0 ? (
+          {currentCompanies.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
               <AlertCircle size={40} style={{ opacity: 0.4, marginBottom: '12px' }} />
               <p style={{ fontSize: '1rem' }}>No companies found matching your search.</p>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
-              {filteredCompanies.map((c, i) => {
+              {currentCompanies.map((c, i) => {
                 const isFull = c.slots_available === 0;
                 const isApplied = appliedIds.includes(c.company_id);
                 const { bg: indBg, color: indColor } = industryColor(c.industry);
@@ -508,6 +520,31 @@ export default function LandingScreen({ onGetStarted }) {
                   </motion.div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '30px', gap: '10px' }}>
+              <button 
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
+                disabled={currentPage === 1}
+                className="btn btn-primary btn-sm"
+                style={{ padding: '8px 16px', borderRadius: '8px', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+              >
+                Previous
+              </button>
+              <span style={{ display: 'flex', alignItems: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                Page {currentPage} of {totalPages}
+              </span>
+              <button 
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
+                disabled={currentPage === totalPages}
+                className="btn btn-primary btn-sm"
+                style={{ padding: '8px 16px', borderRadius: '8px', opacity: currentPage === totalPages ? 0.5 : 1, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+              >
+                Next
+              </button>
             </div>
           )}
 
