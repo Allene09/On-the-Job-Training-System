@@ -7,6 +7,11 @@ class AdminModel {
     return rows[0][0];
   }
 
+  static async getMonthlyStatisticalReport(year) {
+    const [rows] = await pool.query('CALL sp_GetMonthlyStatisticalReport(?)', [year]);
+    return rows[0];
+  }
+
   static async getUsers() {
     const [rows] = await pool.query(`
       SELECT u.*, 

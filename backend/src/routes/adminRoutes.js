@@ -4,6 +4,7 @@ const adminController = require('../controllers/adminController');
 const { verifyToken, isAdmin, isAdminOrStaff } = require('../middleware/authMiddleware');
 
 router.get('/stats', verifyToken, isAdmin, adminController.getAdminStats);
+router.get('/reports/graphical-stats', verifyToken, isAdmin, adminController.getGraphicalStats);
 router.get('/users', verifyToken, isAdminOrStaff, adminController.getUsers);
 router.post('/requirements/type', verifyToken, isAdmin, adminController.createRequirementType);
 router.get('/pending-accounts', verifyToken, isAdmin, adminController.getPendingAccounts);

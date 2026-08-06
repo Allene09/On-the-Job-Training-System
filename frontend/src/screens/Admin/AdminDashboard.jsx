@@ -7,6 +7,7 @@ import {
   TrendingUp, Clock, CheckCircle2, XCircle, Bell, Search, AlertCircle, Eye, EyeOff, X
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Line } from 'recharts';
 
 function StatusBadge({ status }) {
   const map = { active: 'badge-active', inactive: 'badge-rejected', pending: 'badge-pending', approved: 'badge-approved', student: 'badge-ongoing', staff: 'badge-submitted', admin: 'badge-approved' };
@@ -843,15 +844,79 @@ function ManageRequirementsView({ reqTypes, onAdd, setReqTypes }) {
 }
 
 function ReportsView({ stats, placements, students, companies }) {
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [graphData, setGraphData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchGraphData = async () => {
+      setLoading(true);
+      try {
+        const res = await fetchWithAuth(`${API_BASE_URL}/admin/reports/graphical-stats?year=${selectedYear}`);
+        const data = await res.json();
+        if (data.success) {
+          setGraphData(data.data);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+      setLoading(false);
+    };
+    fetchGraphData();
+  }, [selectedYear]);
+
+  const currentY = new Date().getFullYear();
+  const years = Array.from({length: (currentY + 2) - 2024}, (_, i) => 2024 + i);
+
   return (
     <>
-      <div className="page-header"><h1>System Reports & Analytics</h1><p>View overall OJT performance and completion analytics</p></div>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1>System Reports & Analytics</h1>
+          <p>View overall OJT performance and completion analytics</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Year:</span>
+          <select className="form-input" value={selectedYear} onChange={e => setSelectedYear(e.target.value)} style={{ padding: '6px 12px', width: 'auto' }}>
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+      </div>
       <div className="stat-grid">
         <div className="stat-card cyan"><div className="stat-icon cyan"><BarChart3 size={20} /></div><div><div className="stat-value">{stats.total_students}</div><div className="stat-label">Total Students</div></div></div>
         <div className="stat-card green"><div className="stat-icon green"><CheckCircle2 size={20} /></div><div><div className="stat-value">{stats.completed_placements}</div><div className="stat-label">OJT Completed</div></div></div>
         <div className="stat-card purple"><div className="stat-icon purple"><TrendingUp size={20} /></div><div><div className="stat-value">{stats.ongoing_placements}</div><div className="stat-label">OJT Ongoing</div></div></div>
         <div className="stat-card orange"><div className="stat-icon orange"><Clock size={20} /></div><div><div className="stat-value">{stats.total_hours}h</div><div className="stat-label">Total Hours Tracked</div></div></div>
       </div>
+
+      <div className="card animate-fade-in-up delay-100" style={{ marginBottom: '24px' }}>
+        <div className="card-header"><div className="card-title">Monthly Activity Overview ({selectedYear})</div></div>
+        <div style={{ padding: '20px', height: '400px', width: '100%' }}>
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-muted)' }}>Loading graph data...</div>
+          ) : graphData.length === 0 ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-muted)' }}>No data available for this year</div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={graphData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <XAxis dataKey="month_name" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="left" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: 'var(--color-bg-elevated)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                  itemStyle={{ color: '#fff' }}
+                />
+                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                <Bar yAxisId="left" dataKey="registrations" name="New Users" fill="var(--color-cyan)" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="left" dataKey="placements" name="Placements Started" fill="var(--color-purple)" radius={[4, 4, 0, 0]} />
+                <Line yAxisId="right" type="monotone" dataKey="hours_tracked" name="Hours Tracked" stroke="var(--color-orange)" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
       <div className="card animate-fade-in-up delay-200">
         <div className="card-header"><div className="card-title">Placement Summary</div></div>
         <div className="table-wrapper">

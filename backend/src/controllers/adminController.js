@@ -23,6 +23,17 @@ exports.getAdminStats = async (req, res) => {
   }
 };
 
+exports.getGraphicalStats = async (req, res) => {
+  try {
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const stats = await AdminModel.getMonthlyStatisticalReport(year);
+    return res.json({ success: true, data: stats });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 exports.getUsers = async (req, res) => {
   try {
     const usersData = await AdminModel.getUsers();
