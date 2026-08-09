@@ -13,6 +13,13 @@
   --color-border:         rgba(255, 255, 255, 0.1);
   --color-border-accent:  rgba(139, 92, 246, 0.4);
 
+  /* Chart & Accent Colors */
+  --color-cyan:           #06b6d4;
+  --color-purple:         #8b5cf6;
+  --color-orange:         #f97316;
+  --color-pink:           #ec4899;
+  --color-emerald:        #10b981;
+
   /* Brand Gradients (Y2K / Dopamine touches) */
   --gradient-primary:   linear-gradient(135deg, #06b6d4 0%, #8b5cf6 50%, #ec4899 100%);
   --gradient-secondary: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);

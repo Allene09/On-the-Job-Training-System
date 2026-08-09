@@ -899,18 +899,30 @@ function ReportsView({ stats, placements, students, companies }) {
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={graphData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-cyan)" stopOpacity={0.9}/>
+                    <stop offset="95%" stopColor="var(--color-cyan)" stopOpacity={0.2}/>
+                  </linearGradient>
+                  <linearGradient id="colorPlacements" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-purple)" stopOpacity={0.9}/>
+                    <stop offset="95%" stopColor="var(--color-purple)" stopOpacity={0.2}/>
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                 <XAxis dataKey="month_name" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="left" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="right" orientation="right" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: 'var(--color-bg-elevated)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                  itemStyle={{ color: '#fff' }}
+                  contentStyle={{ backgroundColor: 'var(--color-bg-elevated)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', boxShadow: 'var(--shadow-md)' }}
+                  itemStyle={{ color: '#fff', fontWeight: 500 }}
+                  labelStyle={{ color: 'var(--text-muted)', marginBottom: '8px' }}
+                  cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                 />
-                <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                <Bar yAxisId="left" dataKey="registrations" name="New Users" fill="var(--color-cyan)" radius={[4, 4, 0, 0]} />
-                <Bar yAxisId="left" dataKey="placements" name="Placements Started" fill="var(--color-purple)" radius={[4, 4, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="hours_tracked" name="Hours Tracked" stroke="var(--color-orange)" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                <Legend wrapperStyle={{ paddingTop: '20px' }} iconType="circle" />
+                <Bar yAxisId="left" dataKey="registrations" name="New Users" fill="url(#colorUsers)" radius={[6, 6, 0, 0]} barSize={20} />
+                <Bar yAxisId="left" dataKey="placements" name="Placements Started" fill="url(#colorPlacements)" radius={[6, 6, 0, 0]} barSize={20} />
+                <Line yAxisId="right" type="monotone" dataKey="hours_tracked" name="Hours Tracked" stroke="var(--color-orange)" strokeWidth={4} dot={{ r: 5, strokeWidth: 2, fill: 'var(--color-bg-elevated)' }} activeDot={{ r: 8, stroke: 'var(--color-orange)', strokeWidth: 2, fill: '#fff' }} />
               </ComposedChart>
             </ResponsiveContainer>
           )}
