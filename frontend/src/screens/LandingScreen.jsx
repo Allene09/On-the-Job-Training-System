@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import API_BASE_URL from '../config/api';
-import { 
-  Building2, GraduationCap, Shield, TrendingUp, 
+import {
+  Building2, GraduationCap, Shield, TrendingUp,
   FileCheck, Clock, ArrowRight, CheckCircle2,
   Search, MapPin, Briefcase, Users, AlertCircle
 } from 'lucide-react';
@@ -53,7 +53,7 @@ export default function LandingScreen({ onGetStarted }) {
   const [showRegModal, setShowRegModal] = useState(false);
   const [applyingCompanyId, setApplyingCompanyId] = useState(null);
   const [regForm, setRegForm] = useState({
-    first_name: '', middle_name: '', last_name: '', course: '', year_section: '', gender: '', email: '', student_number: ''
+    first_name: '', middle_name: '', last_name: '', course: '', year_section: '', gender: '', contact_number: '', address: '', email: '', student_number: ''
   });
   const [regError, setRegError] = useState('');
   const [regLoading, setRegLoading] = useState(false);
@@ -70,7 +70,7 @@ export default function LandingScreen({ onGetStarted }) {
       const fn = regForm.first_name.toLowerCase().trim().replace(/\s+/g, '');
       const ln = regForm.last_name.toLowerCase().trim().replace(/\s+/g, '');
       if (fn || ln) {
-        setRegForm(prev => ({ ...prev, email: `${fn}.${ln}@student.edu.ph`.replace(/^\./, '') }));
+        setRegForm(prev => ({ ...prev, email: `${fn}.${ln}@bisu.edu.ph`.replace(/^\./, '') }));
       }
     }
   }, [regForm.first_name, regForm.last_name]);
@@ -107,6 +107,13 @@ export default function LandingScreen({ onGetStarted }) {
     e.preventDefault();
     setRegLoading(true);
     setRegError('');
+
+    if (regForm.contact_number && regForm.contact_number.length !== 11) {
+      setRegError('Contact number must be exactly 11 digits (e.g. 09123456789)');
+      setRegLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
@@ -122,6 +129,8 @@ export default function LandingScreen({ onGetStarted }) {
           course: regForm.course,
           year_section: regForm.year_section,
           year_level: regForm.year_section,
+          contact_number: regForm.contact_number,
+          address: regForm.address,
           company_id: applyingCompanyId
         })
       });
@@ -129,7 +138,7 @@ export default function LandingScreen({ onGetStarted }) {
       if (data.success) {
         setAppliedIds(prev => [...prev, applyingCompanyId]);
         setShowRegModal(false);
-        setRegForm({ first_name: '', middle_name: '', last_name: '', course: '', year_section: '', gender: '', email: '', student_number: '' });
+        setRegForm({ first_name: '', middle_name: '', last_name: '', course: '', year_section: '', gender: '', contact_number: '', address: '', email: '', student_number: '' });
       } else {
         setRegError(data.message || 'Registration failed');
       }
@@ -151,9 +160,9 @@ export default function LandingScreen({ onGetStarted }) {
   // ---- End Partner Companies State ----
 
   return (
-    <div className="landing-page" style={{ 
-      minHeight: '100vh', 
-      display: 'flex', 
+    <div className="landing-page" style={{
+      minHeight: '100vh',
+      display: 'flex',
       flexDirection: 'column',
       backgroundImage: 'linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.95)), url(/bg-impact.png)',
       backgroundSize: 'cover',
@@ -188,16 +197,16 @@ export default function LandingScreen({ onGetStarted }) {
               </div>
               <div style={{ display: 'flex', gap: '16px' }}>
                 <div className="form-group" style={{ flex: 1 }}>
-                  <label className="form-label">First Name</label>
-                  <input type="text" className="form-input" required value={regForm.first_name} onChange={e => setRegForm({ ...regForm, first_name: e.target.value })} />
+                  <label className="form-label">Last Name *</label>
+                  <input type="text" className="form-input" required value={regForm.last_name} onChange={e => setRegForm({ ...regForm, last_name: e.target.value })} />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
                   <label className="form-label">Middle Name</label>
-                  <input type="text" className="form-input" value={regForm.middle_name} onChange={e => setRegForm({ ...regForm, middle_name: e.target.value })} />
+                  <input type="text" className="form-input" placeholder="e.g. Santos" value={regForm.middle_name} onChange={e => setRegForm({ ...regForm, middle_name: e.target.value })} />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
-                  <label className="form-label">Last Name</label>
-                  <input type="text" className="form-input" required value={regForm.last_name} onChange={e => setRegForm({ ...regForm, last_name: e.target.value })} />
+                  <label className="form-label">First Name *</label>
+                  <input type="text" className="form-input" required value={regForm.first_name} onChange={e => setRegForm({ ...regForm, first_name: e.target.value })} />
                 </div>
               </div>
 
@@ -219,6 +228,25 @@ export default function LandingScreen({ onGetStarted }) {
                   <option value="Female">Female</option>
                   <option value="Other">Other</option>
                 </select>
+              </div>
+
+              <div style={{ display: 'flex', gap: '16px' }}>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">Contact Number</label>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={11}
+                    className="form-input"
+                    placeholder="e.g. 09123456789"
+                    value={regForm.contact_number}
+                    onChange={e => setRegForm({ ...regForm, contact_number: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+                  />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">Address</label>
+                  <input type="text" className="form-input" placeholder="e.g. Tagbilaran City, Bohol" value={regForm.address} onChange={e => setRegForm({ ...regForm, address: e.target.value })} />
+                </div>
               </div>
 
               <div className="divider" style={{ margin: '24px 0', borderColor: 'var(--color-border)' }} />
@@ -259,14 +287,14 @@ export default function LandingScreen({ onGetStarted }) {
 
       {/* Hero Section */}
       <section style={{ padding: '80px 20px', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', position: 'relative', zIndex: 1 }}>
-        <motion.h1 
+        <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="kinetic-type" style={{ fontSize: '3.5rem', fontWeight: 800, marginBottom: '20px', lineHeight: 1.1, margin: '0 auto 24px', display: 'inline-block', whiteSpace: 'nowrap', overflow: 'hidden' }}>
           Streamline Your <span style={{ color: '#38bdf8' }}>OJTrack Monitoring System</span>
         </motion.h1>
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
@@ -278,16 +306,16 @@ export default function LandingScreen({ onGetStarted }) {
       {/* Services Grid */}
       <section style={{ padding: '60px 40px', background: 'rgba(30, 41, 59, 0.5)', borderTop: '1px solid rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <motion.h2 
+          <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
             style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '40px', fontWeight: 700 }}>Our Services &amp; Features</motion.h2>
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px' }}>
             {services.map((s, i) => (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -309,7 +337,7 @@ export default function LandingScreen({ onGetStarted }) {
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
           {/* Section Header */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -327,7 +355,7 @@ export default function LandingScreen({ onGetStarted }) {
           </motion.div>
 
           {/* Search Bar */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
@@ -406,116 +434,116 @@ export default function LandingScreen({ onGetStarted }) {
                   >
                     {/* Company Photo */}
                     <div style={{ height: '140px', width: '100%', background: `url(${c.photo_url ? API_BASE_URL.replace('/api', '') + c.photo_url : ''}) center/cover no-repeat`, backgroundColor: '#1e293b' }} />
-                    
+
                     <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
-                    {/* Full banner */}
-                    {isFull && (
-                      <div style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(244,63,94,0.15)', border: '1px solid rgba(244,63,94,0.3)', color: '#f43f5e', borderRadius: '8px', padding: '3px 10px', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                        Full
-                      </div>
-                    )}
+                      {/* Full banner */}
+                      {isFull && (
+                        <div style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(244,63,94,0.15)', border: '1px solid rgba(244,63,94,0.3)', color: '#f43f5e', borderRadius: '8px', padding: '3px 10px', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                          Full
+                        </div>
+                      )}
 
-                    {/* Company Header */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                      {/* Company Header */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                        <div style={{
+                          width: '48px', height: '48px', borderRadius: '12px',
+                          background: `linear-gradient(135deg, ${indColor}33, ${indColor}11)`,
+                          border: `1px solid ${indColor}33`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '1.3rem', fontWeight: 800, color: indColor, flexShrink: 0
+                        }}>
+                          {c.company_name[0]}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {c.company_name}
+                          </div>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: indBg, color: indColor, borderRadius: '6px', padding: '2px 8px', fontSize: '0.72rem', fontWeight: 600, marginTop: '4px' }}>
+                            <Briefcase size={11} /> {c.industry}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Details */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          <MapPin size={13} style={{ flexShrink: 0 }} /> {c.address}
+                        </div>
+                        {c.requirements && (
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Requirements:</span> {c.requirements}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Slots */}
                       <div style={{
-                        width: '48px', height: '48px', borderRadius: '12px',
-                        background: `linear-gradient(135deg, ${indColor}33, ${indColor}11)`,
-                        border: `1px solid ${indColor}33`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '1.3rem', fontWeight: 800, color: indColor, flexShrink: 0
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        background: isFull ? 'rgba(244,63,94,0.07)' : 'rgba(56,189,248,0.07)',
+                        border: `1px solid ${isFull ? 'rgba(244,63,94,0.2)' : 'rgba(56,189,248,0.15)'}`,
+                        borderRadius: '10px', padding: '8px 12px'
                       }}>
-                        {c.company_name[0]}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {c.company_name}
+                        <Users size={15} color={isFull ? '#f43f5e' : '#38bdf8'} />
+                        <div>
+                          <span style={{ fontWeight: 700, fontSize: '1rem', color: isFull ? '#f43f5e' : '#38bdf8' }}>
+                            {c.slots_available}
+                          </span>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: '4px' }}>
+                            {isFull ? '— No slots available' : `slot${c.slots_available !== 1 ? 's' : ''} available`}
+                          </span>
                         </div>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: indBg, color: indColor, borderRadius: '6px', padding: '2px 8px', fontSize: '0.72rem', fontWeight: 600, marginTop: '4px' }}>
-                          <Briefcase size={11} /> {c.industry}
-                        </div>
                       </div>
-                    </div>
 
-                    {/* Details */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                        <MapPin size={13} style={{ flexShrink: 0 }} /> {c.address}
+                      {/* Action */}
+                      <div style={{ marginTop: 'auto', paddingTop: '4px' }}>
+                        {isFull ? (
+                          <button
+                            disabled
+                            style={{
+                              width: '100%', padding: '10px', borderRadius: '10px',
+                              background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)',
+                              color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600,
+                              cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                            }}
+                          >
+                            <AlertCircle size={14} /> Not Available
+                          </button>
+                        ) : isApplied ? (
+                          <button
+                            disabled
+                            style={{
+                              width: '100%', padding: '10px', borderRadius: '10px',
+                              background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)',
+                              color: '#f59e0b', fontSize: '0.85rem', fontWeight: 600,
+                              cursor: 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                            }}
+                          >
+                            <Clock size={14} /> Application Pending
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleApply(c.company_id)}
+                            style={{
+                              width: '100%', padding: '10px', borderRadius: '10px',
+                              background: 'var(--gradient-primary)', border: 'none',
+                              color: '#fff', fontSize: '0.85rem', fontWeight: 600,
+                              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                              transition: 'opacity 0.2s',
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                          >
+                            Apply Now <ArrowRight size={14} />
+                          </button>
+                        )}
                       </div>
-                      {c.requirements && (
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Requirements:</span> {c.requirements}
-                        </div>
+
+                      {/* Login prompt after applying */}
+                      {isApplied && (
+                        <p style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '-8px' }}>
+                          <button onClick={onGetStarted} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', textDecoration: 'underline', fontSize: 'inherit' }}>Sign in</button> to complete and track your application.
+                        </p>
                       )}
-                    </div>
-
-                    {/* Slots */}
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: '8px',
-                      background: isFull ? 'rgba(244,63,94,0.07)' : 'rgba(56,189,248,0.07)',
-                      border: `1px solid ${isFull ? 'rgba(244,63,94,0.2)' : 'rgba(56,189,248,0.15)'}`,
-                      borderRadius: '10px', padding: '8px 12px'
-                    }}>
-                      <Users size={15} color={isFull ? '#f43f5e' : '#38bdf8'} />
-                      <div>
-                        <span style={{ fontWeight: 700, fontSize: '1rem', color: isFull ? '#f43f5e' : '#38bdf8' }}>
-                          {c.slots_available}
-                        </span>
-                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: '4px' }}>
-                          {isFull ? '— No slots available' : `slot${c.slots_available !== 1 ? 's' : ''} available`}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Action */}
-                    <div style={{ marginTop: 'auto', paddingTop: '4px' }}>
-                      {isFull ? (
-                        <button
-                          disabled
-                          style={{
-                            width: '100%', padding: '10px', borderRadius: '10px',
-                            background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)',
-                            color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600,
-                            cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                          }}
-                        >
-                          <AlertCircle size={14} /> Not Available
-                        </button>
-                      ) : isApplied ? (
-                        <button
-                          disabled
-                          style={{
-                            width: '100%', padding: '10px', borderRadius: '10px',
-                            background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)',
-                            color: '#f59e0b', fontSize: '0.85rem', fontWeight: 600,
-                            cursor: 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                          }}
-                        >
-                          <Clock size={14} /> Application Pending
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleApply(c.company_id)}
-                          style={{
-                            width: '100%', padding: '10px', borderRadius: '10px',
-                            background: 'var(--gradient-primary)', border: 'none',
-                            color: '#fff', fontSize: '0.85rem', fontWeight: 600,
-                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                            transition: 'opacity 0.2s',
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-                          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                        >
-                          Apply Now <ArrowRight size={14} />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Login prompt after applying */}
-                    {isApplied && (
-                      <p style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '-8px' }}>
-                        <button onClick={onGetStarted} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', textDecoration: 'underline', fontSize: 'inherit' }}>Sign in</button> to complete and track your application.
-                      </p>
-                    )}
                     </div>
                   </motion.div>
                 );
@@ -526,8 +554,8 @@ export default function LandingScreen({ onGetStarted }) {
           {/* Pagination Controls */}
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: '30px', gap: '10px' }}>
-              <button 
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
                 className="btn btn-primary btn-sm"
                 style={{ padding: '8px 16px', borderRadius: '8px', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
@@ -537,8 +565,8 @@ export default function LandingScreen({ onGetStarted }) {
               <span style={{ display: 'flex', alignItems: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                 Page {currentPage} of {totalPages}
               </span>
-              <button 
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
                 className="btn btn-primary btn-sm"
                 style={{ padding: '8px 16px', borderRadius: '8px', opacity: currentPage === totalPages ? 0.5 : 1, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
@@ -554,7 +582,7 @@ export default function LandingScreen({ onGetStarted }) {
 
       {/* Highlights */}
       <section style={{ padding: '60px 40px', maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '40px', alignItems: 'center' }}>
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: -30 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
@@ -566,7 +594,7 @@ export default function LandingScreen({ onGetStarted }) {
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {features.map((f, i) => (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
@@ -577,14 +605,14 @@ export default function LandingScreen({ onGetStarted }) {
             ))}
           </div>
         </motion.div>
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.2 }}
           style={{ flex: '1 1 400px', display: 'flex', justifyContent: 'center' }}>
-          <div style={{ 
-            width: '100%', maxWidth: '400px', height: '300px', borderRadius: '24px', 
+          <div style={{
+            width: '100%', maxWidth: '400px', height: '300px', borderRadius: '24px',
             background: 'var(--gradient-card-glow)', border: '1px solid var(--color-border-accent)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: 'var(--shadow-lg), 0 0 40px rgba(6,182,212,0.1)'

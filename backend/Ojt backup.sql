@@ -2,7 +2,7 @@
 SQLyog Ultimate v9.62 
 MySQL - 5.7.43-log : Database - ojt
 *********************************************************************
-*/
+*/
 
 /*!40101 SET NAMES utf8 */;
 
@@ -24,6 +24,9 @@ CREATE TABLE `admins` (
   `admin_id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `full_name` varchar(150) NOT NULL,
+  `first_name` varchar(50) DEFAULT NULL,
+  `middle_name` varchar(50) DEFAULT NULL,
+  `last_name` varchar(50) DEFAULT NULL,
   PRIMARY KEY (`admin_id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `admins_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
@@ -31,7 +34,7 @@ CREATE TABLE `admins` (
 
 /*Data for the table `admins` */
 
-insert  into `admins`(`admin_id`,`user_id`,`full_name`) values (1,1,'Mark Allene Cayda');
+insert  into `admins`(`admin_id`,`user_id`,`full_name`,`first_name`,`middle_name`,`last_name`) values (1,1,'Mark Allene L. Cayda','Mark Allene','L.','Cayda');
 
 /*Table structure for table `announcements` */
 
@@ -49,6 +52,7 @@ CREATE TABLE `announcements` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 /*Data for the table `announcements` */
+
 
 /*Table structure for table `applications` */
 
@@ -69,11 +73,11 @@ CREATE TABLE `applications` (
   CONSTRAINT `applications_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON DELETE CASCADE,
   CONSTRAINT `applications_ibfk_2` FOREIGN KEY (`company_id`) REFERENCES `companies` (`company_id`) ON DELETE CASCADE,
   CONSTRAINT `applications_ibfk_3` FOREIGN KEY (`approved_by`) REFERENCES `users` (`user_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1;
 
 /*Data for the table `applications` */
 
-insert  into `applications`(`application_id`,`student_id`,`company_id`,`status`,`applied_at`,`approved_by`,`approved_at`) values (1,3,1,'accepted','2026-08-01 15:01:05',5,'2026-08-01 15:02:00');
+insert  into `applications`(`application_id`,`student_id`,`company_id`,`status`,`applied_at`,`approved_by`,`approved_at`) values (2,10,1,'pending','2026-08-05 21:22:10',NULL,NULL);
 
 /*Table structure for table `attendance` */
 
@@ -94,6 +98,7 @@ CREATE TABLE `attendance` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 /*Data for the table `attendance` */
+
 
 /*Table structure for table `companies` */
 
@@ -116,11 +121,11 @@ CREATE TABLE `companies` (
   PRIMARY KEY (`company_id`),
   KEY `added_by` (`added_by`),
   CONSTRAINT `companies_ibfk_1` FOREIGN KEY (`added_by`) REFERENCES `users` (`user_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=latin1;
 
 /*Data for the table `companies` */
 
-insert  into `companies`(`company_id`,`company_name`,`industry`,`address`,`contact_person`,`contact_number`,`email`,`slots_available`,`photo_url`,`requirements`,`status`,`added_by`,`created_at`) values (1,'Provincial Government Bohol','BICTO','4th Floor, New Provincial Capitol Complex Lino Chatto Drive, Cogon District, Tagbilaran City, Bohol 6300 Philippines','038.411.0138','','bictu.innovation@gmail.com',3,NULL,NULL,'active',1,'2026-08-01 13:14:04');
+insert  into `companies`(`company_id`,`company_name`,`industry`,`address`,`contact_person`,`contact_number`,`email`,`slots_available`,`photo_url`,`requirements`,`status`,`added_by`,`created_at`) values (1,'Bicto','Software, Networking, Infra','4th Floor, New Provincial Capitol Complex Lino Chatto Drive, Cogon District, Tagbilaran City, Bohol 6300 Philippines','Bojos','038.411.0138','bictu.innovation@gmail.com',2,'/uploads/1785898806620.png','MOA, Resume, Application Letter, Drug Test','active',1,'2026-08-01 13:14:04'),(2,'Sagility','IT','1st and 2nd Floors of the Innercore Building, Old Tagbilaran Airport Compound, Barangay Booy, Tagbilaran City, Bohol','HR','0906-746-4252','Bohol.Careers@Sagilityhealth.com',5,'/uploads/1785898941354.jpg','MOA, Resume, Application Letter, Grade','active',1,'2026-08-05 09:40:31'),(3,'AGC-Plaza Marcela','IT','Pamaong Street corner Belderol Street, Cogon District, Tagbilaran City, 6300 Bohol, Philippines','63 38 411 5425','','customercare@alturasbohol.com',2,'/uploads/1785897776674.jpg','MOA, Resume, Application Letter, ATM Account Number, Medical Certificate, Police/Barangay Clearance','active',1,'2026-08-05 10:18:12'),(4,'Tagbilaran City College','IT','Dampas District, Tagbilaran City, Bohol 6300','tagbilarancitycollege@gmail.com','','tagbilarancitycollege@gmail.com',10,'/uploads/1785995208382.jpg',NULL,'active',1,'2026-08-05 21:56:01'),(5,'BOHECO II ','IT','Cantagay, JAgna','','','',5,'/uploads/1785995577446.jpg',NULL,'active',1,'2026-08-05 21:57:24'),(6,'Provincial Procurement Management  Unit','IT','New Provincial Capitol Complex Lino Chatto Drive, Cogon District, Tagbilaran City, Bohol 6300 Philippines','','','',5,'/uploads/1785995727621.jpg',NULL,'active',1,'2026-08-05 21:58:25'),(7,'HNU FabLab','IT','','','','',5,NULL,NULL,'active',1,'2026-08-05 21:59:42'),(8,'HNU MIS Office','IT','','','','',5,NULL,NULL,'active',1,'2026-08-05 22:00:12'),(9,'HNU MANAGEMENT DEPARTMENT','IT','','','','',5,NULL,NULL,'active',1,'2026-08-05 22:00:43'),(10,'AGC- ICM MALL IT','IT','','','','',5,NULL,NULL,'active',1,'2026-08-05 22:01:47'),(11,'AGC- CORP IT','IT','','','','',5,NULL,NULL,'active',1,'2026-08-05 22:02:11'),(12,'Social Security System(SSS)','IT','','','','',5,NULL,NULL,'active',1,'2026-08-05 22:03:06'),(13,'BLENDITORO CORP BOHOL','SOFTWARE','','','','',5,NULL,NULL,'active',1,'2026-08-05 22:04:00'),(14,'IBEX Global Solutions','','','','','',9,NULL,NULL,'active',1,'2026-08-05 22:05:43'),(15,'CAAP - BOHOL PANGALAO INTERNATIONAL AIRPORT','IT','','','','',5,NULL,NULL,'active',1,'2026-08-05 22:06:21'),(16,'BOHECO I','IT','','','','',5,NULL,NULL,'active',1,'2026-08-05 22:06:58'),(17,'LGU CARMEN','','','','','',5,NULL,NULL,'active',1,'2026-08-05 22:07:23'),(18,'LGU BATUAN','','','','','',5,NULL,NULL,'active',1,'2026-08-05 22:07:34'),(19,'BISU BILAR','','','','','',5,NULL,NULL,'active',1,'2026-08-05 22:07:53');
 
 /*Table structure for table `evaluations` */
 
@@ -139,11 +144,10 @@ CREATE TABLE `evaluations` (
   PRIMARY KEY (`evaluation_id`),
   KEY `placement_id` (`placement_id`),
   CONSTRAINT `evaluations_ibfk_1` FOREIGN KEY (`placement_id`) REFERENCES `ojt_placements` (`placement_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 /*Data for the table `evaluations` */
 
-insert  into `evaluations`(`evaluation_id`,`placement_id`,`evaluator_name`,`attendance_score`,`work_quality_score`,`attitude_score`,`total_score`,`remarks`,`evaluated_at`) values (1,1,'Prof. Alejandro Rivera','75.00','75.00','76.00','226.00','Goods','2026-08-03 19:24:11');
 
 /*Table structure for table `notifications` */
 
@@ -163,6 +167,7 @@ CREATE TABLE `notifications` (
 
 /*Data for the table `notifications` */
 
+
 /*Table structure for table `ojt_placements` */
 
 DROP TABLE IF EXISTS `ojt_placements`;
@@ -181,11 +186,10 @@ CREATE TABLE `ojt_placements` (
   KEY `company_id` (`company_id`),
   CONSTRAINT `ojt_placements_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON DELETE CASCADE,
   CONSTRAINT `ojt_placements_ibfk_2` FOREIGN KEY (`company_id`) REFERENCES `companies` (`company_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 /*Data for the table `ojt_placements` */
 
-insert  into `ojt_placements`(`placement_id`,`student_id`,`company_id`,`start_date`,`end_date`,`required_hours`,`total_hours_rendered`,`status`) values (1,3,1,'2026-08-01','2026-11-30',486,'0.00','ongoing'),(2,3,1,'2026-08-01','2026-11-30',486,'0.00','ongoing');
 
 /*Table structure for table `requirement_types` */
 
@@ -198,11 +202,10 @@ CREATE TABLE `requirement_types` (
   `is_required` tinyint(1) DEFAULT '1',
   `deadline` date DEFAULT NULL,
   PRIMARY KEY (`requirement_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 /*Data for the table `requirement_types` */
 
-insert  into `requirement_types`(`requirement_id`,`name`,`description`,`is_required`,`deadline`) values (1,'Resume','HEHE',1,'2026-08-31'),(2,'Rsume','Valid',1,'2026-08-26');
 
 /*Table structure for table `staff` */
 
@@ -213,6 +216,9 @@ CREATE TABLE `staff` (
   `user_id` int(11) NOT NULL,
   `employee_id` varchar(30) DEFAULT NULL,
   `full_name` varchar(150) NOT NULL,
+  `first_name` varchar(50) DEFAULT NULL,
+  `middle_name` varchar(50) DEFAULT NULL,
+  `last_name` varchar(50) DEFAULT NULL,
   `department` varchar(100) DEFAULT NULL,
   `contact_number` varchar(20) DEFAULT NULL,
   PRIMARY KEY (`staff_id`),
@@ -223,7 +229,7 @@ CREATE TABLE `staff` (
 
 /*Data for the table `staff` */
 
-insert  into `staff`(`staff_id`,`user_id`,`employee_id`,`full_name`,`department`,`contact_number`) values (1,5,'5','Mark Allene CAyda','ctech',NULL);
+insert  into `staff`(`staff_id`,`user_id`,`employee_id`,`full_name`,`first_name`,`middle_name`,`last_name`,`department`,`contact_number`) values (1,5,'5','Mark Allene L. Cayda','Mark Allene','L.','Cayda','ctech',NULL);
 
 /*Table structure for table `student_requirements` */
 
@@ -246,11 +252,10 @@ CREATE TABLE `student_requirements` (
   CONSTRAINT `student_requirements_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON DELETE CASCADE,
   CONSTRAINT `student_requirements_ibfk_2` FOREIGN KEY (`requirement_id`) REFERENCES `requirement_types` (`requirement_id`),
   CONSTRAINT `student_requirements_ibfk_3` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`user_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 /*Data for the table `student_requirements` */
 
-insert  into `student_requirements`(`submission_id`,`student_id`,`requirement_id`,`file_path`,`status`,`remarks`,`reviewed_by`,`submitted_at`,`reviewed_at`) values (1,3,1,'/uploads/doc_1785761279971.pdf','pending',NULL,NULL,'2026-08-03 20:48:00',NULL),(2,3,1,'/uploads/doc_1785761404206.pdf','pending',NULL,NULL,'2026-08-03 20:50:04',NULL),(3,3,1,'/uploads/doc_1785761448054.pdf','pending',NULL,NULL,'2026-08-03 20:50:48',NULL);
 
 /*Table structure for table `students` */
 
@@ -260,26 +265,26 @@ CREATE TABLE `students` (
   `student_id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `student_number` varchar(30) NOT NULL,
-  `full_name` varchar(150) NOT NULL,
-  `first_name` varchar(50) DEFAULT NULL,
-  `middle_name` varchar(50) DEFAULT NULL,
   `last_name` varchar(50) DEFAULT NULL,
-  `gender` varchar(20) DEFAULT NULL,
+  `middle_name` varchar(50) DEFAULT NULL,
+  `first_name` varchar(50) DEFAULT NULL,
   `course` varchar(100) DEFAULT NULL,
   `year_level` varchar(50) DEFAULT NULL,
+  `gender` varchar(20) DEFAULT NULL,
   `contact_number` varchar(20) DEFAULT NULL,
   `address` varchar(255) DEFAULT NULL,
   `required_hours` int(11) DEFAULT '486',
   `profile_photo` varchar(255) DEFAULT NULL,
+  `full_name` varchar(150) NOT NULL,
   PRIMARY KEY (`student_id`),
   UNIQUE KEY `student_number` (`student_number`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `students_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=latin1;
 
 /*Data for the table `students` */
 
-insert  into `students`(`student_id`,`user_id`,`student_number`,`full_name`,`first_name`,`middle_name`,`last_name`,`gender`,`course`,`year_level`,`contact_number`,`address`,`required_hours`,`profile_photo`) values (1,2,'2026-00001','Mark Allene Cayda',NULL,NULL,NULL,'Male','BS Computer Science','4th Year','09123456789','Zamora, Bilar',486,NULL),(2,4,'SN-1785501194123','Kevin  Esto',NULL,NULL,NULL,'Male','BSCS','4-B',NULL,NULL,486,NULL),(3,6,'SN-1785560802545','James  Ronolo',NULL,NULL,NULL,'Male','BSCS','3B',NULL,NULL,486,NULL),(4,7,'SN-1785761032609','Zach  Lumantas',NULL,NULL,NULL,'Male','BSCS','4B',NULL,NULL,486,NULL);
+insert  into `students`(`student_id`,`user_id`,`student_number`,`last_name`,`middle_name`,`first_name`,`course`,`year_level`,`gender`,`contact_number`,`address`,`required_hours`,`profile_photo`,`full_name`) values (10,14,'2026-753657','Cayda','Lofranco','Mark Allene','BS Computer Science ','4B','Male',NULL,NULL,486,NULL,'Mark Allene Lofranco Cayda'),(11,15,'2026-540375','Peresores','Filliar','Jeffrey','BS Computer Science','4B','Male',NULL,NULL,486,NULL,'Jeffrey Filliar Peresores'),(12,16,'2026-412484','Requierme','Sosmena','Ray Joshua','computer science','Bscs - 4','Male',NULL,NULL,486,NULL,'Ray Joshua Sosmena Requierme'),(13,17,'2026-540210','Bacasmas','Gerald','Mike','BS in Computer Science ','4B','Male',NULL,NULL,486,NULL,'Mike Gerald Bacasmas');
 
 /*Table structure for table `users` */
 
@@ -289,6 +294,7 @@ CREATE TABLE `users` (
   `user_id` int(11) NOT NULL AUTO_INCREMENT,
   `email` varchar(150) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
+  `plain_password` varchar(255) DEFAULT NULL,
   `role` enum('student','staff','admin') NOT NULL,
   `status` enum('active','inactive','pending','pending_admin_approval') DEFAULT 'pending',
   `requires_password_change` tinyint(1) DEFAULT '1',
@@ -296,11 +302,11 @@ CREATE TABLE `users` (
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`user_id`),
   UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=latin1;
 
 /*Data for the table `users` */
 
-insert  into `users`(`user_id`,`email`,`password_hash`,`role`,`status`,`requires_password_change`,`created_at`,`updated_at`) values (1,'Admin@gmail.com','Admin123','admin','active',0,'2026-07-31 19:18:46','2026-07-31 19:18:46'),(2,'markallene.cayda@bisu.edu.ph','Allene12345','student','active',0,'2026-07-31 20:19:01','2026-07-31 20:21:31'),(3,'staff@gmail.com','staff12345','staff','active',0,'2026-07-31 20:19:01','2026-08-01 12:42:25'),(4,'Kevin@gmail.com','Kevin123','student','active',0,'2026-07-31 20:33:14','2026-07-31 20:34:14'),(5,'Allene@gmail.com','allene123','staff','active',0,'2026-08-01 12:45:21','2026-08-01 12:45:21'),(6,'jamesronolo@gmail.com','jamesronolo123','student','active',0,'2026-08-01 13:06:42','2026-08-01 13:07:47'),(7,'zachlumantas@gmail.com','zachlumantas123','student','pending_admin_approval',1,'2026-08-03 20:43:52','2026-08-03 20:43:52');
+insert  into `users`(`user_id`,`email`,`password_hash`,`plain_password`,`role`,`status`,`requires_password_change`,`created_at`,`updated_at`) values (1,'Admin@gmail.com','Admin123','Admin123','admin','active',0,'2026-07-31 19:18:46','2026-08-18 10:48:45'),(5,'Allene@gmail.com','allene123','allene123','staff','active',0,'2026-08-01 12:45:21','2026-08-18 10:48:45'),(14,'markallene.cayda@bisu.edu.ph','$2b$10$eEkm1sEb8iXaWqzvovodIOiU3P.bnSlKKnW8nAyV.huhl6J.FDA/u','markallenecayda123','student','active',0,'2026-08-05 20:10:22','2026-08-18 10:52:45'),(15,'jeffrey.peresores@bisu.edu.ph','$2b$10$MoS2mzbMAXFyOt1yY4eLauOkp2RhvuWfdPD1b.GjVoAB7PSJMKd3.','jeffreyperesores123','student','active',1,'2026-08-06 13:26:58','2026-08-18 10:52:45'),(16,'rayjoshua.requierme@bisu.edu.ph','$2b$10$l.GvYFCL1zMGTqeXzLXTJeil8ESkgQ4L2.Qc72mOsPm7gk.EqnfL2','rayjoshuarequierme123','student','active',0,'2026-08-18 09:55:42','2026-08-18 10:52:45'),(17,'mike.bacasmas@bisu.edu.ph','$2b$10$5wSASH6FfQrUs4Bk7Z3P0.FNZFKpuQV/hGpcYisyYH1tNP/.Kojvy','mikebacasmas123','student','active',0,'2026-08-18 10:14:30','2026-08-18 10:52:45');
 
 /*Table structure for table `weekly_reports` */
 
@@ -322,6 +328,7 @@ CREATE TABLE `weekly_reports` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 /*Data for the table `weekly_reports` */
+
 
 /* Procedure structure for procedure `sp_AddCompany` */
 
@@ -348,17 +355,17 @@ DELIMITER ;
 DELIMITER $$
 
 /*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_ApplyToCompany`(
-    IN p_student_id INT,
-    IN p_company_id INT
-)
+          IN p_student_id INT,
+          IN p_company_id INT
+      )
 BEGIN
-    INSERT INTO applications (student_id, company_id, status)
-    VALUES (p_student_id, p_company_id, 'pending');
-    
-    UPDATE companies 
-    SET slots_available = slots_available - 1 
-    WHERE company_id = p_company_id AND slots_available > 0;
-END */$$
+          INSERT INTO applications (student_id, company_id, status)
+          VALUES (p_student_id, p_company_id, 'pending');
+          
+          UPDATE companies 
+          SET slots_available = slots_available - 1 
+          WHERE company_id = p_company_id AND slots_available > 0;
+      END */$$
 DELIMITER ;
 
 /* Procedure structure for procedure `sp_ApproveAccount` */
@@ -409,14 +416,22 @@ DELIMITER ;
 DELIMITER $$
 
 /*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_ApproveStudentAccount`(
-    IN p_user_id INT,
-    IN p_password_hash VARCHAR(255)
-)
+        IN p_user_id INT,
+        IN p_generated_password VARCHAR(255),
+        IN p_plain_password VARCHAR(255)
+      )
 BEGIN
-    UPDATE users
-    SET status = 'active', password_hash = p_password_hash
-    WHERE user_id = p_user_id;
-END */$$
+        UPDATE users 
+        SET 
+          status = 'active', 
+          password_hash = p_generated_password, 
+          plain_password = p_plain_password,
+          requires_password_change = 0,
+          updated_at = NOW()
+        WHERE user_id = p_user_id;
+
+        SELECT p_user_id AS user_id;
+      END */$$
 DELIMITER ;
 
 /* Procedure structure for procedure `sp_ChangeUserPassword` */
@@ -425,10 +440,18 @@ DELIMITER ;
 
 DELIMITER $$
 
-/*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_ChangeUserPassword`(IN p_user_id INT, IN p_new_password VARCHAR(255))
+/*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_ChangeUserPassword`(
+        IN p_user_id INT,
+        IN p_new_password VARCHAR(255),
+        IN p_plain_password VARCHAR(255)
+      )
 BEGIN
-    UPDATE users SET password_hash = p_new_password, requires_password_change = 0 WHERE user_id = p_user_id;
-END */$$
+        UPDATE users
+        SET password_hash = p_new_password,
+            plain_password = p_plain_password,
+            requires_password_change = 0
+        WHERE user_id = p_user_id;
+      END */$$
 DELIMITER ;
 
 /* Procedure structure for procedure `sp_CheckAndCompletePlacement` */
@@ -559,8 +582,21 @@ DELIMITER $$
 
 /*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_GetAllUsers`()
 BEGIN
-    SELECT * FROM users;
-END */$$
+        SELECT 
+          u.user_id, u.email, u.role, u.status, u.plain_password, u.requires_password_change, u.created_at, u.updated_at,
+          COALESCE(s.first_name, st.first_name, a.first_name, '') AS first_name,
+          COALESCE(s.middle_name, st.middle_name, a.middle_name, '') AS middle_name,
+          COALESCE(s.last_name, st.last_name, a.last_name, '') AS last_name,
+          COALESCE(s.full_name, st.full_name, a.full_name, u.email) AS full_name,
+          s.student_id, s.student_number, s.course, s.year_level, s.gender, s.contact_number AS student_contact, s.address,
+          st.staff_id, st.employee_id, st.department, st.contact_number AS staff_contact,
+          a.admin_id
+        FROM users u
+        LEFT JOIN students s ON u.user_id = s.user_id
+        LEFT JOIN staff st ON u.user_id = st.user_id
+        LEFT JOIN admins a ON u.user_id = a.user_id
+        ORDER BY u.created_at DESC;
+      END */$$
 DELIMITER ;
 
 /* Procedure structure for procedure `sp_GetAnnouncements` */
@@ -611,6 +647,48 @@ BEGIN
 END */$$
 DELIMITER ;
 
+/* Procedure structure for procedure `sp_GetMonthlyStatisticalReport` */
+
+/*!50003 DROP PROCEDURE IF EXISTS  `sp_GetMonthlyStatisticalReport` */;
+
+DELIMITER $$
+
+/*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_GetMonthlyStatisticalReport`(IN p_year INT)
+BEGIN
+          SELECT 
+              m.month_num,
+              m.month_name,
+              COALESCE(u.registrations, 0) AS registrations,
+              COALESCE(p.placements, 0) AS placements,
+              COALESCE(a.hours_tracked, 0) AS hours_tracked
+          FROM (
+              SELECT 1 AS month_num, 'Jan' AS month_name UNION SELECT 2, 'Feb' UNION SELECT 3, 'Mar'
+              UNION SELECT 4, 'Apr' UNION SELECT 5, 'May' UNION SELECT 6, 'Jun'
+              UNION SELECT 7, 'Jul' UNION SELECT 8, 'Aug' UNION SELECT 9, 'Sep'
+              UNION SELECT 10, 'Oct' UNION SELECT 11, 'Nov' UNION SELECT 12, 'Dec'
+          ) m
+          LEFT JOIN (
+              SELECT MONTH(created_at) AS month_num, COUNT(*) AS registrations
+              FROM users 
+              WHERE YEAR(created_at) = p_year AND role IN ('student', 'staff')
+              GROUP BY MONTH(created_at)
+          ) u ON m.month_num = u.month_num
+          LEFT JOIN (
+              SELECT MONTH(start_date) AS month_num, COUNT(*) AS placements
+              FROM ojt_placements 
+              WHERE YEAR(start_date) = p_year 
+              GROUP BY MONTH(start_date)
+          ) p ON m.month_num = p.month_num
+          LEFT JOIN (
+              SELECT MONTH(log_date) AS month_num, SUM(hours_rendered) AS hours_tracked
+              FROM attendance 
+              WHERE YEAR(log_date) = p_year 
+              GROUP BY MONTH(log_date)
+          ) a ON m.month_num = a.month_num
+          ORDER BY m.month_num;
+      END */$$
+DELIMITER ;
+
 /* Procedure structure for procedure `sp_GetPendingAccounts` */
 
 /*!50003 DROP PROCEDURE IF EXISTS  `sp_GetPendingAccounts` */;
@@ -619,27 +697,18 @@ DELIMITER $$
 
 /*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_GetPendingAccounts`()
 BEGIN
-    SELECT u.user_id, u.email, u.role, u.status, u.created_at, s.student_number, s.full_name, s.course, s.year_level, s.first_name, s.last_name
-    FROM users u
-    JOIN students s ON u.user_id = s.user_id
-    WHERE u.status = 'pending_admin_approval';
-END */$$
-DELIMITER ;
-
-/* Procedure structure for procedure `sp_RejectStudentAccount` */
-
-/*!50003 DROP PROCEDURE IF EXISTS  `sp_RejectStudentAccount` */;
-
-DELIMITER $$
-
-/*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_RejectStudentAccount`(
-    IN p_user_id INT
-)
-BEGIN
-    UPDATE users
-    SET status = 'inactive'
-    WHERE user_id = p_user_id;
-END */$$
+        SELECT 
+          u.user_id, u.email, u.role, u.status, u.created_at,
+          s.student_id, s.student_number, s.first_name, s.middle_name, s.last_name, s.full_name,
+          s.course, s.year_level, s.gender, s.contact_number, s.address,
+          a.application_id, a.company_id, c.company_name
+        FROM users u
+        LEFT JOIN students s ON u.user_id = s.user_id
+        LEFT JOIN applications a ON s.student_id = a.student_id
+        LEFT JOIN companies c ON a.company_id = c.company_id
+        WHERE u.status IN ('pending', 'pending_admin_approval')
+        ORDER BY u.created_at DESC;
+      END */$$
 DELIMITER ;
 
 /* Procedure structure for procedure `sp_GetPendingRequirements` */
@@ -805,16 +874,23 @@ DELIMITER ;
 
 DELIMITER $$
 
-/*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_GetUserDetails`(IN p_user_id INT, IN p_role VARCHAR(50))
+/*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_GetUserDetails`(IN p_user_id INT)
 BEGIN
-    IF p_role = 'student' THEN
-        SELECT * FROM students WHERE user_id = p_user_id;
-    ELSEIF p_role = 'staff' THEN
-        SELECT * FROM staff WHERE user_id = p_user_id;
-    ELSEIF p_role = 'admin' THEN
-        SELECT * FROM admins WHERE user_id = p_user_id;
-    END IF;
-END */$$
+        SELECT 
+          u.user_id, u.email, u.role, u.status, u.plain_password, u.requires_password_change, u.created_at,
+          COALESCE(s.first_name, st.first_name, a.first_name, '') AS first_name,
+          COALESCE(s.middle_name, st.middle_name, a.middle_name, '') AS middle_name,
+          COALESCE(s.last_name, st.last_name, a.last_name, '') AS last_name,
+          COALESCE(s.full_name, st.full_name, a.full_name, u.email) AS full_name,
+          s.student_id, s.student_number, s.course, s.year_level, s.gender, s.contact_number AS student_contact, s.address,
+          st.staff_id, st.employee_id, st.department, st.contact_number AS staff_contact,
+          a.admin_id
+        FROM users u
+        LEFT JOIN students s ON u.user_id = s.user_id
+        LEFT JOIN staff st ON u.user_id = st.user_id
+        LEFT JOIN admins a ON u.user_id = a.user_id
+        WHERE u.user_id = p_user_id;
+      END */$$
 DELIMITER ;
 
 /* Procedure structure for procedure `sp_GetWeeklyReportsByStudentId` */
@@ -863,20 +939,34 @@ DELIMITER ;
 DELIMITER $$
 
 /*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_RegisterStaff`(
-    IN p_email VARCHAR(150),
-    IN p_password_hash VARCHAR(255),
-    IN p_full_name VARCHAR(150),
-    IN p_employee_id VARCHAR(30),
-    IN p_department VARCHAR(100)
-)
+        IN p_email VARCHAR(150),
+        IN p_password_hash VARCHAR(255),
+        IN p_plain_password VARCHAR(255),
+        IN p_employee_id VARCHAR(30),
+        IN p_first_name VARCHAR(50),
+        IN p_middle_name VARCHAR(50),
+        IN p_last_name VARCHAR(50),
+        IN p_full_name VARCHAR(150),
+        IN p_department VARCHAR(100),
+        IN p_contact_number VARCHAR(20),
+        IN p_status VARCHAR(50)
+      )
 BEGIN
-    DECLARE new_user_id INT;
-    INSERT INTO users (email, password_hash, role, status, requires_password_change)
-    VALUES (p_email, p_password_hash, 'staff', 'active', FALSE);
-    SET new_user_id = LAST_INSERT_ID();
-    INSERT INTO staff (user_id, employee_id, full_name, department)
-    VALUES (new_user_id, p_employee_id, p_full_name, p_department);
-END */$$
+        DECLARE v_user_id INT;
+        DECLARE v_status VARCHAR(50);
+        
+        SET v_status = IFNULL(p_status, 'active');
+
+        INSERT INTO users (email, password_hash, plain_password, role, status, requires_password_change)
+        VALUES (p_email, p_password_hash, p_plain_password, 'staff', v_status, 0);
+
+        SET v_user_id = LAST_INSERT_ID();
+
+        INSERT INTO staff (user_id, employee_id, first_name, middle_name, last_name, full_name, department, contact_number)
+        VALUES (v_user_id, p_employee_id, p_first_name, p_middle_name, p_last_name, p_full_name, p_department, p_contact_number);
+
+        SELECT v_user_id AS user_id;
+      END */$$
 DELIMITER ;
 
 /* Procedure structure for procedure `sp_RegisterStudent` */
@@ -886,25 +976,37 @@ DELIMITER ;
 DELIMITER $$
 
 /*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_RegisterStudent`(
-    IN p_email VARCHAR(150),
-    IN p_password_hash VARCHAR(255),
-    IN p_student_number VARCHAR(30),
-    IN p_full_name VARCHAR(150),
-    IN p_first_name VARCHAR(50),
-    IN p_middle_name VARCHAR(50),
-    IN p_last_name VARCHAR(50),
-    IN p_gender VARCHAR(20),
-    IN p_course VARCHAR(100),
-    IN p_year_level VARCHAR(50)
-)
+        IN p_email VARCHAR(150),
+        IN p_password_hash VARCHAR(255),
+        IN p_plain_password VARCHAR(255),
+        IN p_student_number VARCHAR(30),
+        IN p_first_name VARCHAR(50),
+        IN p_middle_name VARCHAR(50),
+        IN p_last_name VARCHAR(50),
+        IN p_full_name VARCHAR(150),
+        IN p_course VARCHAR(100),
+        IN p_year_level VARCHAR(50),
+        IN p_gender VARCHAR(20),
+        IN p_contact_number VARCHAR(20),
+        IN p_address VARCHAR(255),
+        IN p_status VARCHAR(50)
+      )
 BEGIN
-    DECLARE new_user_id INT;
-    INSERT INTO users (email, password_hash, role, status, requires_password_change)
-    VALUES (p_email, p_password_hash, 'student', 'pending_admin_approval', TRUE);
-    SET new_user_id = LAST_INSERT_ID();
-    INSERT INTO students (user_id, student_number, full_name, first_name, middle_name, last_name, gender, course, year_level)
-    VALUES (new_user_id, p_student_number, p_full_name, p_first_name, p_middle_name, p_last_name, p_gender, p_course, p_year_level);
-END */$$
+        DECLARE v_user_id INT;
+        DECLARE v_status VARCHAR(50);
+        
+        SET v_status = IFNULL(p_status, 'pending_admin_approval');
+
+        INSERT INTO users (email, password_hash, plain_password, role, status, requires_password_change)
+        VALUES (p_email, p_password_hash, p_plain_password, 'student', v_status, 0);
+
+        SET v_user_id = LAST_INSERT_ID();
+
+        INSERT INTO students (user_id, student_number, first_name, middle_name, last_name, full_name, course, year_level, gender, contact_number, address)
+        VALUES (v_user_id, p_student_number, p_first_name, p_middle_name, p_last_name, p_full_name, p_course, p_year_level, p_gender, p_contact_number, p_address);
+
+        SELECT v_user_id AS user_id;
+      END */$$
 DELIMITER ;
 
 /* Procedure structure for procedure `sp_RejectApplication` */
@@ -917,6 +1019,22 @@ DELIMITER $$
 BEGIN
     UPDATE applications SET status = 'rejected' WHERE application_id = p_application_id;
 END */$$
+DELIMITER ;
+
+/* Procedure structure for procedure `sp_RejectStudentAccount` */
+
+/*!50003 DROP PROCEDURE IF EXISTS  `sp_RejectStudentAccount` */;
+
+DELIMITER $$
+
+/*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_RejectStudentAccount`(
+          IN p_user_id INT
+      )
+BEGIN
+          UPDATE users
+          SET status = 'inactive'
+          WHERE user_id = p_user_id;
+      END */$$
 DELIMITER ;
 
 /* Procedure structure for procedure `sp_ReviewRequirement` */
@@ -947,20 +1065,29 @@ DELIMITER ;
 
 DELIMITER $$
 
-/*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_SearchUsers`(IN p_role VARCHAR(50), IN p_status VARCHAR(50))
+/*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_SearchUsers`(IN p_search VARCHAR(100))
 BEGIN
-    SELECT u.*, 
-        s.full_name AS student_name, s.student_number,
-        st.full_name AS staff_name, st.employee_id,
-        a.full_name AS admin_name
-    FROM users u
-    LEFT JOIN students s ON u.user_id = s.user_id
-    LEFT JOIN staff st ON u.user_id = st.user_id
-    LEFT JOIN admins a ON u.user_id = a.user_id
-    WHERE (p_role IS NULL OR p_role = '' OR u.role = p_role)
-      AND (p_status IS NULL OR p_status = '' OR u.status = p_status)
-    ORDER BY u.created_at DESC;
-END */$$
+        SELECT 
+          u.user_id, u.email, u.role, u.status, u.plain_password, u.created_at,
+          COALESCE(s.first_name, st.first_name, a.first_name, '') AS first_name,
+          COALESCE(s.middle_name, st.middle_name, a.middle_name, '') AS middle_name,
+          COALESCE(s.last_name, st.last_name, a.last_name, '') AS last_name,
+          COALESCE(s.full_name, st.full_name, a.full_name, u.email) AS full_name,
+          s.student_number, s.course, s.year_level, s.gender, s.contact_number AS student_contact, s.address,
+          st.employee_id, st.department, st.contact_number AS staff_contact
+        FROM users u
+        LEFT JOIN students s ON u.user_id = s.user_id
+        LEFT JOIN staff st ON u.user_id = st.user_id
+        LEFT JOIN admins a ON u.user_id = a.user_id
+        WHERE 
+          u.email LIKE CONCAT('%', p_search, '%')
+          OR s.full_name LIKE CONCAT('%', p_search, '%')
+          OR st.full_name LIKE CONCAT('%', p_search, '%')
+          OR a.full_name LIKE CONCAT('%', p_search, '%')
+          OR s.student_number LIKE CONCAT('%', p_search, '%')
+          OR st.employee_id LIKE CONCAT('%', p_search, '%')
+        ORDER BY u.created_at DESC;
+      END */$$
 DELIMITER ;
 
 /* Procedure structure for procedure `sp_SubmitEvaluation` */
@@ -1053,47 +1180,91 @@ DELIMITER ;
 DELIMITER $$
 
 /*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_UpdateUserProfile`(
-    IN p_user_id INT,
-    IN p_role ENUM('student','staff','admin'),
-    IN p_email VARCHAR(150),
-    IN p_password_hash VARCHAR(255),
-    IN p_full_name VARCHAR(150),
-    IN p_student_number VARCHAR(30),
-    IN p_course VARCHAR(100),
-    IN p_year_level VARCHAR(50),
-    IN p_gender VARCHAR(20),
-    IN p_employee_id VARCHAR(30),
-    IN p_department VARCHAR(100)
-)
+        IN p_user_id INT,
+        IN p_role VARCHAR(20),
+        IN p_email VARCHAR(150),
+        IN p_first_name VARCHAR(50),
+        IN p_middle_name VARCHAR(50),
+        IN p_last_name VARCHAR(50),
+        IN p_full_name VARCHAR(150),
+        IN p_password_hash VARCHAR(255),
+        IN p_plain_password VARCHAR(255),
+        IN p_contact_number VARCHAR(20),
+        IN p_department VARCHAR(100),
+        IN p_address VARCHAR(255),
+        IN p_student_number VARCHAR(30),
+        IN p_course VARCHAR(100),
+        IN p_year_level VARCHAR(50),
+        IN p_gender VARCHAR(20),
+        IN p_employee_id VARCHAR(30)
+      )
 BEGIN
-    UPDATE users
-    SET email = p_email,
-        password_hash = CASE
-            WHEN p_password_hash IS NULL OR p_password_hash = '' THEN password_hash
-            ELSE p_password_hash
-        END,
-        requires_password_change = 0
-    WHERE user_id = p_user_id;
-    IF p_role = 'student' THEN
-        UPDATE students
-        SET full_name = p_full_name,
-            student_number = COALESCE(NULLIF(p_student_number, ''), student_number),
-            course = p_course,
-            year_level = p_year_level,
-            gender = p_gender
+        -- Update user credentials if email or password passed
+        UPDATE users 
+        SET 
+          email = IFNULL(p_email, email),
+          password_hash = CASE WHEN p_password_hash IS NOT NULL AND p_password_hash != '' THEN p_password_hash ELSE password_hash END,
+          plain_password = CASE WHEN p_plain_password IS NOT NULL AND p_plain_password != '' THEN p_plain_password ELSE plain_password END,
+          updated_at = NOW()
         WHERE user_id = p_user_id;
-    ELSEIF p_role = 'staff' THEN
-        UPDATE staff
-        SET full_name = p_full_name,
-            employee_id = COALESCE(NULLIF(p_employee_id, ''), employee_id),
-            department = p_department
+
+        -- Update role-specific profile
+        IF p_role = 'student' THEN
+          UPDATE students 
+          SET 
+            first_name = IFNULL(p_first_name, first_name),
+            middle_name = IFNULL(p_middle_name, middle_name),
+            last_name = IFNULL(p_last_name, last_name),
+            full_name = IFNULL(p_full_name, full_name),
+            student_number = IFNULL(p_student_number, student_number),
+            course = IFNULL(p_course, course),
+            year_level = IFNULL(p_year_level, year_level),
+            gender = IFNULL(p_gender, gender),
+            contact_number = IFNULL(p_contact_number, contact_number),
+            address = IFNULL(p_address, address)
+          WHERE user_id = p_user_id;
+        ELSEIF p_role = 'staff' THEN
+          UPDATE staff 
+          SET 
+            first_name = IFNULL(p_first_name, first_name),
+            middle_name = IFNULL(p_middle_name, middle_name),
+            last_name = IFNULL(p_last_name, last_name),
+            full_name = IFNULL(p_full_name, full_name),
+            employee_id = IFNULL(p_employee_id, employee_id),
+            department = IFNULL(p_department, department),
+            contact_number = IFNULL(p_contact_number, contact_number)
+          WHERE user_id = p_user_id;
+        ELSEIF p_role = 'admin' THEN
+          UPDATE admins 
+          SET 
+            first_name = IFNULL(p_first_name, first_name),
+            middle_name = IFNULL(p_middle_name, middle_name),
+            last_name = IFNULL(p_last_name, last_name),
+            full_name = IFNULL(p_full_name, full_name)
+          WHERE user_id = p_user_id;
+        END IF;
+
+        SELECT p_user_id AS user_id;
+      END */$$
+DELIMITER ;
+
+/* Procedure structure for procedure `sp_UpdateUserStatus` */
+
+/*!50003 DROP PROCEDURE IF EXISTS  `sp_UpdateUserStatus` */;
+
+DELIMITER $$
+
+/*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_UpdateUserStatus`(
+        IN p_user_id INT,
+        IN p_status VARCHAR(50)
+      )
+BEGIN
+        UPDATE users 
+        SET status = p_status, updated_at = NOW()
         WHERE user_id = p_user_id;
-    ELSEIF p_role = 'admin' THEN
-        UPDATE admins
-        SET full_name = p_full_name
-        WHERE user_id = p_user_id;
-    END IF;
-END */$$
+
+        SELECT p_user_id AS user_id, p_status AS status;
+      END */$$
 DELIMITER ;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

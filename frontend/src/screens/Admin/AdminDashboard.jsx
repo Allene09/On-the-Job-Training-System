@@ -4,7 +4,8 @@ import { toast } from 'react-hot-toast';
 import API_BASE_URL, { fetchWithAuth } from '../../config/api';
 import {
   Users, Building2, FileText, BarChart3, Plus, Settings,
-  TrendingUp, Clock, CheckCircle2, XCircle, Bell, Search, AlertCircle, Eye, EyeOff, X
+  TrendingUp, Clock, CheckCircle2, XCircle, Bell, Search, AlertCircle, Eye, EyeOff, X,
+  Copy, Check, Lock, Unlock, Shield, ShieldCheck, UserCheck, UserX
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Line } from 'recharts';
@@ -62,6 +63,8 @@ export default function AdminDashboard({ activePage }) {
     course: '',
     year_level: '',
     gender: '',
+    contact_number: '',
+    address: '',
     employee_id: generateIdForRole('staff'),
     department: ''
   });
@@ -72,14 +75,14 @@ export default function AdminDashboard({ activePage }) {
     const updatedForm = { ...userForm, [field]: value };
     const first = updatedForm.first_name.replace(/[^a-zA-Z]/g, '').toLowerCase();
     const last = updatedForm.last_name.replace(/[^a-zA-Z]/g, '').toLowerCase();
-    const domain = updatedForm.role === 'staff' ? '@staff.edu.ph' : '@student.edu.ph';
+    const domain = updatedForm.role === 'staff' ? '@staff.edu.ph' : '@bisu.edu.ph';
     const autoGenEmail = first && last ? `${first}${last}${domain}` : '';
     const autoGenPass = first && last ? `${first}${last}123` : '';
 
     setUserForm({ 
-      ...updatedForm,
-      email: autoGenEmail,
-      password: autoGenPass
+      ...updatedForm, 
+      email: autoGenEmail, 
+      password: autoGenPass 
     });
   };
 
@@ -235,13 +238,33 @@ export default function AdminDashboard({ activePage }) {
   };
 
   const resetUserForm = () => {
-    setUserForm({ role: 'student', first_name: '', middle_name: '', last_name: '', email: '', password: '', student_number: generateIdForRole('student'), course: '', year_level: '', gender: '', employee_id: generateIdForRole('staff'), department: '' });
+    setUserForm({
+      role: 'student',
+      first_name: '',
+      middle_name: '',
+      last_name: '',
+      email: '',
+      password: '',
+      student_number: generateIdForRole('student'),
+      course: '',
+      year_level: '',
+      gender: '',
+      contact_number: '',
+      address: '',
+      employee_id: generateIdForRole('staff'),
+      department: ''
+    });
     setUserFormError('');
   };
 
   const addUser = async () => {
     if (!userForm.first_name || !userForm.last_name || !userForm.email || !userForm.password) {
       setUserFormError('First name, last name, and auto-generated fields are required.');
+      return;
+    }
+
+    if (userForm.contact_number && userForm.contact_number.length !== 11) {
+      setUserFormError('Contact number must be exactly 11 digits (e.g. 09123456789)');
       return;
     }
 
@@ -272,14 +295,27 @@ export default function AdminDashboard({ activePage }) {
         status: created.status,
         requires_password_change: created.requires_password_change,
         created_at: created.created_at,
-        details: profile
+        full_name: payload.full_name,
+        first_name: payload.first_name,
+        middle_name: payload.middle_name,
+        last_name: payload.last_name,
+        student_number: payload.student_number || profile.student_number || '',
+        employee_id: payload.employee_id || profile.employee_id || '',
+        course: payload.course || profile.course || '',
+        year_level: payload.year_level || profile.year_level || '',
+        gender: payload.gender || profile.gender || '',
+        contact_number: payload.contact_number || profile.contact_number || '',
+        address: payload.address || profile.address || '',
+        department: payload.department || profile.department || '',
+        plain_password: userForm.password,
+        details: { ...profile, ...payload }
       };
 
-      setUsers([...users, createdUser]);
+      setUsers(prev => [createdUser, ...prev]);
       if (created.role === 'student') {
-        setStudents([...students, profile]);
+        setStudents(prev => [{ ...profile, ...payload }, ...prev]);
       } else if (created.role === 'staff') {
-        setStaff([...staff, profile]);
+        setStaff(prev => [{ ...profile, ...payload }, ...prev]);
       }
 
       setShowUserModal(false);
@@ -305,7 +341,7 @@ export default function AdminDashboard({ activePage }) {
 
   const pages = {
     dashboard: <AdminOverview stats={stats} announcements={announcements} />,
-    users: <ManageUsersView users={users} students={students} staff={staff} admins={admins} onAdd={() => setShowUserModal(true)} />,
+    users: <ManageUsersView users={users} setUsers={setUsers} students={students} staff={staff} admins={admins} onAdd={() => setShowUserModal(true)} />,
     pending: <PendingAccountsView />,
     companies: <ManageCompaniesView companies={companies} onAdd={() => setShowCompanyModal(true)} setCompanies={setCompanies} onEdit={(c) => { setEditCompanyForm(c); setShowEditCompanyModal(true); }} />,
     requirements: <ManageRequirementsView reqTypes={reqTypes} onAdd={() => setShowReqModal(true)} setReqTypes={setReqTypes} />,
@@ -326,7 +362,7 @@ export default function AdminDashboard({ activePage }) {
             <div className="form-group"><label className="form-label">Address</label><input className="form-input" value={companyForm.address} onChange={e => setCompanyForm({ ...companyForm, address: e.target.value })} /></div>
             <div className="form-row">
               <div className="form-group"><label className="form-label">Contact Person</label><input className="form-input" value={companyForm.contact_person} onChange={e => setCompanyForm({ ...companyForm, contact_person: e.target.value })} /></div>
-              <div className="form-group"><label className="form-label">Contact Number</label><input className="form-input" value={companyForm.contact_number} onChange={e => setCompanyForm({ ...companyForm, contact_number: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">Contact Number</label><input type="tel" inputMode="numeric" maxLength={11} className="form-input" placeholder="e.g. 09123456789" value={companyForm.contact_number} onChange={e => setCompanyForm({ ...companyForm, contact_number: e.target.value.replace(/\D/g, '').slice(0, 11) })} /></div>
               <div className="form-group"><label className="form-label">Slots Available</label><input type="number" className="form-input" value={companyForm.slots_available} min="1" onChange={e => setCompanyForm({ ...companyForm, slots_available: e.target.value })} /></div>
             </div>
             <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" value={companyForm.email} onChange={e => setCompanyForm({ ...companyForm, email: e.target.value })} /></div>
@@ -351,7 +387,7 @@ export default function AdminDashboard({ activePage }) {
             <div className="form-group"><label className="form-label">Address</label><input className="form-input" value={editCompanyForm.address} onChange={e => setEditCompanyForm({ ...editCompanyForm, address: e.target.value })} /></div>
             <div className="form-row">
               <div className="form-group"><label className="form-label">Contact Person</label><input className="form-input" value={editCompanyForm.contact_person} onChange={e => setEditCompanyForm({ ...editCompanyForm, contact_person: e.target.value })} /></div>
-              <div className="form-group"><label className="form-label">Contact Number</label><input className="form-input" value={editCompanyForm.contact_number} onChange={e => setEditCompanyForm({ ...editCompanyForm, contact_number: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">Contact Number</label><input type="tel" inputMode="numeric" maxLength={11} className="form-input" placeholder="e.g. 09123456789" value={editCompanyForm.contact_number} onChange={e => setEditCompanyForm({ ...editCompanyForm, contact_number: e.target.value.replace(/\D/g, '').slice(0, 11) })} /></div>
               <div className="form-group"><label className="form-label">Slots Available</label><input type="number" className="form-input" value={editCompanyForm.slots_available} min="1" onChange={e => setEditCompanyForm({ ...editCompanyForm, slots_available: e.target.value })} /></div>
             </div>
             <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" value={editCompanyForm.email} onChange={e => setEditCompanyForm({ ...editCompanyForm, email: e.target.value })} /></div>
@@ -409,7 +445,7 @@ export default function AdminDashboard({ activePage }) {
                   const newRole = e.target.value;
                   const first = userForm.first_name.replace(/[^a-zA-Z]/g, '').toLowerCase();
                   const last = userForm.last_name.replace(/[^a-zA-Z]/g, '').toLowerCase();
-                  const domain = newRole === 'staff' ? '@staff.edu.ph' : '@student.edu.ph';
+                  const domain = newRole === 'staff' ? '@staff.edu.ph' : '@bisu.edu.ph';
                   const autoGenEmail = first && last ? `${first}${last}${domain}` : '';
                   const autoGenPass = first && last ? `${first}${last}123` : '';
                   
@@ -437,21 +473,21 @@ export default function AdminDashboard({ activePage }) {
                 </div>
                 <div className="form-row">
                   <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label">First Name</label>
-                    <input className="form-input" required value={userForm.first_name} onChange={e => handleNameChange('first_name', e.target.value)} />
+                    <label className="form-label">Last Name *</label>
+                    <input className="form-input" required value={userForm.last_name} onChange={e => handleNameChange('last_name', e.target.value)} />
                   </div>
                   <div className="form-group" style={{ flex: 1 }}>
                     <label className="form-label">Middle Name</label>
-                    <input className="form-input" value={userForm.middle_name} onChange={e => handleNameChange('middle_name', e.target.value)} placeholder="(Optional)" />
+                    <input className="form-input" value={userForm.middle_name} onChange={e => handleNameChange('middle_name', e.target.value)} placeholder="e.g. Santos" />
                   </div>
                   <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label">Last Name</label>
-                    <input className="form-input" required value={userForm.last_name} onChange={e => handleNameChange('last_name', e.target.value)} />
+                    <label className="form-label">First Name *</label>
+                    <input className="form-input" required value={userForm.first_name} onChange={e => handleNameChange('first_name', e.target.value)} />
                   </div>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Course</label>
-                  <input className="form-input" value={userForm.course} onChange={e => setUserForm({ ...userForm, course: e.target.value })} />
+                  <input className="form-input" placeholder="e.g. BS Computer Science" value={userForm.course} onChange={e => setUserForm({ ...userForm, course: e.target.value })} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Year and Section</label>
@@ -466,6 +502,24 @@ export default function AdminDashboard({ activePage }) {
                     <option value="Other">Other</option>
                   </select>
                 </div>
+                <div className="form-row">
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">Contact Number</label>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={11}
+                      className="form-input"
+                      placeholder="e.g. 09123456789"
+                      value={userForm.contact_number}
+                      onChange={e => setUserForm({ ...userForm, contact_number: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+                    />
+                  </div>
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">Address</label>
+                    <input className="form-input" placeholder="e.g. Tagbilaran City, Bohol" value={userForm.address} onChange={e => setUserForm({ ...userForm, address: e.target.value })} />
+                  </div>
+                </div>
               </>
             ) : (
               <>
@@ -475,21 +529,35 @@ export default function AdminDashboard({ activePage }) {
                 </div>
                 <div className="form-row">
                   <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label">First Name</label>
-                    <input className="form-input" required value={userForm.first_name} onChange={e => handleNameChange('first_name', e.target.value)} />
+                    <label className="form-label">Last Name *</label>
+                    <input className="form-input" required value={userForm.last_name} onChange={e => handleNameChange('last_name', e.target.value)} />
                   </div>
                   <div className="form-group" style={{ flex: 1 }}>
                     <label className="form-label">Middle Name</label>
-                    <input className="form-input" value={userForm.middle_name} onChange={e => handleNameChange('middle_name', e.target.value)} placeholder="(Optional)" />
+                    <input className="form-input" value={userForm.middle_name} onChange={e => handleNameChange('middle_name', e.target.value)} placeholder="e.g. Santos" />
                   </div>
                   <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label">Last Name</label>
-                    <input className="form-input" required value={userForm.last_name} onChange={e => handleNameChange('last_name', e.target.value)} />
+                    <label className="form-label">First Name *</label>
+                    <input className="form-input" required value={userForm.first_name} onChange={e => handleNameChange('first_name', e.target.value)} />
                   </div>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Department</label>
-                  <input className="form-input" value={userForm.department} onChange={e => setUserForm({ ...userForm, department: e.target.value })} />
+                <div className="form-row">
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">Department</label>
+                    <input className="form-input" placeholder="e.g. College of Technology" value={userForm.department} onChange={e => setUserForm({ ...userForm, department: e.target.value })} />
+                  </div>
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">Contact Number</label>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={11}
+                      className="form-input"
+                      placeholder="e.g. 09123456789"
+                      value={userForm.contact_number}
+                      onChange={e => setUserForm({ ...userForm, contact_number: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+                    />
+                  </div>
                 </div>
               </>
             )}
@@ -594,28 +662,104 @@ function AdminOverview({ stats, announcements }) {
   );
 }
 
-function ManageUsersView({ users, students, staff, admins, onAdd }) {
+function ManageUsersView({ users, setUsers, students, staff, admins, onAdd }) {
   const [search, setSearch] = useState('');
+  const [selectedUserForView, setSelectedUserForView] = useState(null);
+  const [showModalPass, setShowModalPass] = useState(false);
+  const [copiedPass, setCopiedPass] = useState(false);
 
   const enriched = users.map(u => {
-    let profile = null;
-    if (u.role === 'student') profile = students.find(s => s.user_id === u.user_id);
-    else if (u.role === 'staff') profile = staff.find(s => s.user_id === u.user_id);
-    else if (u.role === 'admin') profile = admins.find(a => a.user_id === u.user_id);
-    return { ...u, full_name: profile?.full_name || u.email };
+    const profile = (u.role === 'student' ? students?.find(s => s.user_id === u.user_id) : u.role === 'staff' ? staff?.find(s => s.user_id === u.user_id) : admins?.find(a => a.user_id === u.user_id)) || u.details || {};
+    
+    const firstName = u.first_name || profile.first_name || u.details?.first_name || '';
+    const middleName = u.middle_name || profile.middle_name || u.details?.middle_name || '';
+    const lastName = u.last_name || profile.last_name || u.details?.last_name || '';
+    const fullName = u.full_name || profile.full_name || u.details?.full_name || [firstName, middleName, lastName].filter(Boolean).join(' ') || u.email;
+    const studentNumber = u.student_number || profile.student_number || u.details?.student_number || '';
+    const gender = u.gender || profile.gender || u.details?.gender || '';
+    const course = u.course || profile.course || u.details?.course || '';
+    const yearLevel = u.year_level || u.year_section || profile.year_level || profile.year_section || u.details?.year_level || '';
+    const contactNumber = u.contact_number || profile.contact_number || u.details?.contact_number || '';
+    const address = u.address || profile.address || u.details?.address || '';
+    const employeeId = u.employee_id || profile.employee_id || u.details?.employee_id || '';
+    const department = u.department || profile.department || u.details?.department || '';
+
+    return {
+      ...u,
+      first_name: firstName,
+      middle_name: middleName,
+      last_name: lastName,
+      full_name: fullName,
+      student_number: studentNumber,
+      gender: gender,
+      course: course,
+      year_level: yearLevel,
+      contact_number: contactNumber,
+      address: address,
+      employee_id: employeeId,
+      department: department,
+      details: {
+        ...u.details,
+        ...profile,
+        first_name: firstName,
+        middle_name: middleName,
+        last_name: lastName,
+        full_name: fullName,
+        student_number: studentNumber,
+        gender: gender,
+        course: course,
+        year_level: yearLevel,
+        contact_number: contactNumber,
+        address: address,
+        employee_id: employeeId,
+        department: department
+      }
+    };
   });
 
   const filtered = enriched.filter(u =>
     u.full_name.toLowerCase().includes(search.toLowerCase()) ||
     u.email.toLowerCase().includes(search.toLowerCase()) ||
-    u.role.toLowerCase().includes(search.toLowerCase())
+    u.role.toLowerCase().includes(search.toLowerCase()) ||
+    (u.student_number || '').toLowerCase().includes(search.toLowerCase()) ||
+    (u.employee_id || '').toLowerCase().includes(search.toLowerCase())
   );
+
+  const toggleUserStatus = async (userId, targetStatus) => {
+    try {
+      const res = await fetchWithAuth(`${API_BASE_URL}/admin/users/${userId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: targetStatus })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUsers(users.map(u => u.user_id === userId ? { ...u, status: targetStatus } : u));
+        if (selectedUserForView && selectedUserForView.user_id === userId) {
+          setSelectedUserForView(prev => ({ ...prev, status: targetStatus }));
+        }
+        toast.success(`User account marked as ${targetStatus}`);
+      } else {
+        toast.error(data.message || 'Failed to update user status');
+      }
+    } catch (error) {
+      toast.error('Server error while updating user status');
+    }
+  };
+
+  const handleCopyPassword = (pwd) => {
+    if (!pwd) return;
+    navigator.clipboard.writeText(pwd);
+    setCopiedPass(true);
+    toast.success('Password copied to clipboard!');
+    setTimeout(() => setCopiedPass(false), 2500);
+  };
 
   return (
     <>
       <div className="page-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div><h1>Manage Users</h1><p>View all registered system users and their roles</p></div>
+          <div><h1>Manage Users</h1><p>View registered system users, inspect profiles, and manage access</p></div>
           <button className="btn btn-primary" onClick={onAdd}><Plus size={16} /> Add User</button>
         </div>
       </div>
@@ -624,7 +768,7 @@ function ManageUsersView({ users, students, staff, admins, onAdd }) {
         <Search size={15} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
         <input
           type="text"
-          placeholder="Search name, email, or role..."
+          placeholder="Search name, email, role, or ID..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{
@@ -643,22 +787,318 @@ function ManageUsersView({ users, students, staff, admins, onAdd }) {
       <div className="card">
         <div className="table-wrapper">
           <table>
-            <thead><tr><th>#</th><th>Full Name</th><th>Email</th><th>Role</th><th>Status</th><th>Registered</th></tr></thead>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Registered</th>
+                <th>Action</th>
+              </tr>
+            </thead>
             <tbody>
               {filtered.map(u => (
                 <tr key={u.user_id}>
                   <td style={{ color: 'var(--text-muted)' }}>{u.user_id}</td>
-                  <td style={{ fontWeight: 600 }}>{u.full_name}</td>
+                  <td style={{ fontWeight: 600 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{
+                        width: '28px', height: '28px', borderRadius: '50%',
+                        background: u.role === 'admin' ? 'rgba(16,185,129,0.15)' : u.role === 'staff' ? 'rgba(168,85,247,0.15)' : 'rgba(56,189,248,0.15)',
+                        color: u.role === 'admin' ? '#10b981' : u.role === 'staff' ? '#a855f7' : '#38bdf8',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700
+                      }}>
+                        {u.full_name ? u.full_name[0].toUpperCase() : 'U'}
+                      </div>
+                      <span>{u.full_name}</span>
+                    </div>
+                  </td>
                   <td style={{ color: 'var(--text-accent)', fontSize: '0.82rem' }}>{u.email}</td>
                   <td><StatusBadge status={u.role} /></td>
                   <td><StatusBadge status={u.status} /></td>
-                  <td style={{ color: 'var(--text-muted)' }}>{new Date(u.created_at).toLocaleDateString()}</td>
+                  <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{new Date(u.created_at).toLocaleDateString()}</td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      {/* View Profiling Button (Read-Only) */}
+                      <button
+                        className="btn btn-ghost btn-xs"
+                        onClick={() => { setSelectedUserForView(u); setShowModalPass(false); setCopiedPass(false); }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        title="View User Profiling"
+                      >
+                        <Eye size={13} /> View
+                      </button>
+
+                      {/* Active / Inactive Status Buttons */}
+                      {u.status === 'active' ? (
+                        <button
+                          className="btn btn-ghost btn-xs"
+                          onClick={() => toggleUserStatus(u.user_id, 'inactive')}
+                          style={{ color: '#f43f5e', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          title="Deactivate this account"
+                        >
+                          <XCircle size={13} /> Inactive
+                        </button>
+                      ) : (
+                        <button
+                          className="btn btn-ghost btn-xs"
+                          onClick={() => toggleUserStatus(u.user_id, 'active')}
+                          style={{ color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          title="Activate this account"
+                        >
+                          <CheckCircle2 size={13} /> Active
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Read-Only User Profiling Modal */}
+      {selectedUserForView && (
+        <div className="modal-overlay" onClick={() => setSelectedUserForView(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '640px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>
+              <div>
+                <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ShieldCheck size={20} color="var(--primary-color)" /> User Profiling (Read-Only)
+                </h2>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                  Review profile and account credentials for {selectedUserForView.full_name}
+                </p>
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={() => setSelectedUserForView(null)}>✕</button>
+            </div>
+
+            {/* User Profile Header Card */}
+            <div style={{
+              background: 'rgba(255,255,255,0.03)', border: '1px solid var(--color-border)',
+              borderRadius: '12px', padding: '16px', margin: '16px 0',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{
+                  width: '52px', height: '52px', borderRadius: '50%',
+                  background: selectedUserForView.role === 'admin' ? 'rgba(16,185,129,0.2)' : selectedUserForView.role === 'staff' ? 'rgba(168,85,247,0.2)' : 'rgba(56,189,248,0.2)',
+                  color: selectedUserForView.role === 'admin' ? '#10b981' : selectedUserForView.role === 'staff' ? '#a855f7' : '#38bdf8',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: 800
+                }}>
+                  {selectedUserForView.full_name ? selectedUserForView.full_name[0].toUpperCase() : 'U'}
+                </div>
+                <div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)' }}>{selectedUserForView.full_name}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{selectedUserForView.email}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <StatusBadge status={selectedUserForView.role} />
+                <StatusBadge status={selectedUserForView.status} />
+              </div>
+            </div>
+
+            {/* Password Section with Visibility Rule */}
+            <div style={{
+              background: selectedUserForView.status === 'active' ? 'rgba(16,185,129,0.06)' : 'rgba(244,63,94,0.06)',
+              border: `1px solid ${selectedUserForView.status === 'active' ? 'rgba(16,185,129,0.25)' : 'rgba(244,63,94,0.25)'}`,
+              borderRadius: '12px', padding: '16px', marginBottom: '20px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, fontSize: '0.88rem', color: selectedUserForView.status === 'active' ? '#10b981' : '#f43f5e' }}>
+                  {selectedUserForView.status === 'active' ? <Unlock size={16} /> : <Lock size={16} />}
+                  Account Password Status
+                </div>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: selectedUserForView.status === 'active' ? '#10b981' : 'var(--text-muted)' }}>
+                  {selectedUserForView.status === 'active' ? 'Account Approved' : 'Pending Approval / Inactive'}
+                </span>
+              </div>
+
+              {selectedUserForView.status === 'active' ? (
+                <div>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px' }}>
+                    <div style={{ position: 'relative', flex: 1 }}>
+                      <input
+                        type={showModalPass ? 'text' : 'password'}
+                        className="form-input"
+                        readOnly
+                        value={selectedUserForView.plain_password || '••••••••'}
+                        style={{
+                          background: 'rgba(0,0,0,0.25)',
+                          fontFamily: showModalPass ? 'inherit' : 'monospace',
+                          fontSize: '1rem',
+                          letterSpacing: showModalPass ? 'normal' : '2px',
+                          color: '#10b981',
+                          fontWeight: 700,
+                          paddingRight: '40px'
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowModalPass(!showModalPass)}
+                        style={{
+                          position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+                          background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex'
+                        }}
+                        title={showModalPass ? 'Hide password' : 'Show password'}
+                      >
+                        {showModalPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                    {selectedUserForView.plain_password && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => handleCopyPassword(selectedUserForView.plain_password)}
+                        style={{ background: 'rgba(255,255,255,0.06)', gap: '4px', height: '40px', padding: '0 12px' }}
+                        title="Copy password"
+                      >
+                        {copiedPass ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
+                        <span style={{ fontSize: '0.8rem' }}>{copiedPass ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    )}
+                  </div>
+                  <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
+                    ✓ This account is approved. The password is visible to administrators.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ padding: '10px 0' }}>
+                  <div style={{
+                    padding: '10px 14px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)',
+                    fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px'
+                  }}>
+                    <Lock size={15} color="#f43f5e" />
+                    <span>Password is hidden and will only become visible once the account is officially approved.</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Detailed Profiling Fields (Read-Only) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', borderBottom: '1px solid var(--color-border)', paddingBottom: '6px' }}>
+                Personal Information
+              </div>
+
+              <div className="form-row">
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label" style={{ fontSize: '0.78rem' }}>Last Name</label>
+                  <input className="form-input" readOnly value={selectedUserForView.last_name || selectedUserForView.details?.last_name || '—'} style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)' }} />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label" style={{ fontSize: '0.78rem' }}>Middle Name</label>
+                  <input className="form-input" readOnly value={selectedUserForView.middle_name || selectedUserForView.details?.middle_name || '—'} style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)' }} />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label" style={{ fontSize: '0.78rem' }}>First Name</label>
+                  <input className="form-input" readOnly value={selectedUserForView.first_name || selectedUserForView.details?.first_name || '—'} style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)' }} />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label" style={{ fontSize: '0.78rem' }}>Full Name</label>
+                  <input className="form-input" readOnly value={selectedUserForView.full_name || '—'} style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)' }} />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label" style={{ fontSize: '0.78rem' }}>Email Address</label>
+                  <input className="form-input" readOnly value={selectedUserForView.email || '—'} style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-accent)' }} />
+                </div>
+              </div>
+
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', borderBottom: '1px solid var(--color-border)', paddingBottom: '6px', marginTop: '6px' }}>
+                {selectedUserForView.role.toUpperCase()} Profiling Details
+              </div>
+
+              {selectedUserForView.role === 'student' && (
+                <>
+                  <div className="form-row">
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label" style={{ fontSize: '0.78rem' }}>Student ID Number</label>
+                      <input className="form-input" readOnly value={selectedUserForView.student_number || selectedUserForView.details?.student_number || '—'} style={{ background: 'rgba(255,255,255,0.04)' }} />
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label" style={{ fontSize: '0.78rem' }}>Gender</label>
+                      <input className="form-input" readOnly value={selectedUserForView.gender || selectedUserForView.details?.gender || '—'} style={{ background: 'rgba(255,255,255,0.04)' }} />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label" style={{ fontSize: '0.78rem' }}>Course</label>
+                      <input className="form-input" readOnly value={selectedUserForView.course || selectedUserForView.details?.course || '—'} style={{ background: 'rgba(255,255,255,0.04)' }} />
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label" style={{ fontSize: '0.78rem' }}>Year and Section</label>
+                      <input className="form-input" readOnly value={selectedUserForView.year_level || selectedUserForView.details?.year_level || '—'} style={{ background: 'rgba(255,255,255,0.04)' }} />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label" style={{ fontSize: '0.78rem' }}>Contact Number</label>
+                      <input className="form-input" readOnly value={selectedUserForView.contact_number || selectedUserForView.details?.contact_number || '—'} style={{ background: 'rgba(255,255,255,0.04)' }} />
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label" style={{ fontSize: '0.78rem' }}>Address</label>
+                      <input className="form-input" readOnly value={selectedUserForView.address || selectedUserForView.details?.address || '—'} style={{ background: 'rgba(255,255,255,0.04)' }} />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {selectedUserForView.role === 'staff' && (
+                <div className="form-row">
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>Employee ID</label>
+                    <input className="form-input" readOnly value={selectedUserForView.employee_id || selectedUserForView.details?.employee_id || '—'} style={{ background: 'rgba(255,255,255,0.04)' }} />
+                  </div>
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>Department</label>
+                    <input className="form-input" readOnly value={selectedUserForView.department || selectedUserForView.details?.department || '—'} style={{ background: 'rgba(255,255,255,0.04)' }} />
+                  </div>
+                </div>
+              )}
+
+              {selectedUserForView.role === 'admin' && (
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '0.78rem' }}>Access Privileges</label>
+                  <input className="form-input" readOnly value="Full System Administrator Access" style={{ background: 'rgba(255,255,255,0.04)', color: '#10b981', fontWeight: 600 }} />
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                {selectedUserForView.status === 'active' ? (
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => toggleUserStatus(selectedUserForView.user_id, 'inactive')}
+                    style={{ color: '#f43f5e', border: '1px solid rgba(244,63,94,0.3)', gap: '6px' }}
+                  >
+                    <XCircle size={15} /> Deactivate Account
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => toggleUserStatus(selectedUserForView.user_id, 'active')}
+                    style={{ color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', gap: '6px' }}
+                  >
+                    <CheckCircle2 size={15} /> Activate Account
+                  </button>
+                )}
+              </div>
+              <button className="btn btn-primary btn-sm" onClick={() => setSelectedUserForView(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -1121,86 +1561,267 @@ function PendingAccountsView() {
 
 function AdminProfileView({ currentUser }) {
   const [formData, setFormData] = useState({
-    first_name: currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ')[0] : '',
-    last_name: currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ').slice(1).join(' ') : '',
+    first_name: currentUser?.profile?.first_name || (currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ')[0] : ''),
+    middle_name: currentUser?.profile?.middle_name || '',
+    last_name: currentUser?.profile?.last_name || (currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ').slice(1).join(' ') : ''),
     email: currentUser?.email || '',
-    password: ''
+    current_password: '',
+    new_password: '',
+    confirm_password: ''
   });
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
   const { updateCurrentUser } = useAuth();
 
   useEffect(() => {
     setFormData({
-      first_name: currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ')[0] : '',
-      last_name: currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ').slice(1).join(' ') : '',
+      first_name: currentUser?.profile?.first_name || (currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ')[0] : ''),
+      middle_name: currentUser?.profile?.middle_name || '',
+      last_name: currentUser?.profile?.last_name || (currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ').slice(1).join(' ') : ''),
       email: currentUser?.email || '',
-      password: ''
+      current_password: '',
+      new_password: '',
+      confirm_password: ''
     });
   }, [currentUser]);
 
   const handleSave = async (e) => {
     e.preventDefault();
+    setMsg({ type: '', text: '' });
+
+    if (formData.new_password || formData.confirm_password) {
+      if (!formData.current_password) {
+        setMsg({ type: 'error', text: 'Current password is required to set a new password.' });
+        return;
+      }
+      if (formData.new_password.length < 6) {
+        setMsg({ type: 'error', text: 'New password must be at least 6 characters long.' });
+        return;
+      }
+      if (formData.new_password !== formData.confirm_password) {
+        setMsg({ type: 'error', text: 'New password and Confirm password do not match.' });
+        return;
+      }
+    }
+
+    setSaving(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/profile`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/auth/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: currentUser.user_id,
           role: currentUser.role,
           email: formData.email,
-          password: formData.password,
-          full_name: `${formData.first_name} ${formData.last_name}`.trim()
+          first_name: formData.first_name,
+          middle_name: formData.middle_name,
+          last_name: formData.last_name,
+          current_password: formData.current_password,
+          password: formData.new_password,
+          confirm_password: formData.confirm_password,
+          full_name: [formData.first_name, formData.middle_name, formData.last_name].filter(Boolean).join(' ').trim()
         })
       });
       const data = await res.json();
       if (data.success) {
         updateCurrentUser(data.user);
         setMsg({ type: 'success', text: 'Admin profile updated successfully!' });
-        setFormData(prev => ({ ...prev, password: '' }));
+        toast.success('Admin profile updated successfully!');
+        setFormData(prev => ({
+          ...prev,
+          current_password: '',
+          new_password: '',
+          confirm_password: ''
+        }));
       } else {
         setMsg({ type: 'error', text: data.message || 'Unable to update profile' });
+        toast.error(data.message || 'Unable to update profile');
       }
     } catch (error) {
       setMsg({ type: 'error', text: 'Server error while updating profile' });
+      toast.error('Server error while updating profile');
+    } finally {
+      setSaving(false);
     }
   };
+
+  const displayName = [formData.first_name, formData.middle_name, formData.last_name].filter(Boolean).join(' ') || currentUser?.profile?.full_name || 'Admin';
 
   return (
     <>
       <div className="page-header">
         <h1>My Profile</h1>
-        <p>Manage your administrator account settings</p>
+        <p>Manage your personal profile and account credentials</p>
       </div>
-      <div className="card animate-fade-in-up delay-100" style={{ maxWidth: '600px' }}>
-        <div className="card-header"><div className="card-title">Edit Profile</div></div>
-        {msg.text && (
-          <div style={{ padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.86rem', background: msg.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(244,63,94,0.1)', color: msg.type === 'success' ? 'var(--status-approved)' : 'var(--status-rejected)' }}>
-            {msg.text}
+
+      <div style={{ maxWidth: '640px' }}>
+        {/* Profile Card Header */}
+        <div style={{
+          background: 'rgba(255,255,255,0.03)', border: '1px solid var(--color-border)',
+          borderRadius: '16px', padding: '20px', marginBottom: '24px',
+          display: 'flex', alignItems: 'center', gap: '16px'
+        }}>
+          <div style={{
+            width: '60px', height: '60px', borderRadius: '50%',
+            background: 'rgba(16,185,129,0.15)', color: '#10b981',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '1.5rem', fontWeight: 800
+          }}>
+            {displayName[0] ? displayName[0].toUpperCase() : 'A'}
           </div>
-        )}
-        <form onSubmit={handleSave}>
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">First Name</label>
-              <input type="text" className="form-input" required value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} />
+          <div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>{displayName}</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>{currentUser?.email}</div>
+            <div style={{ marginTop: '8px' }}>
+              <span className="badge badge-approved"><span className="badge-dot" /> Administrator</span>
             </div>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Last Name</label>
-              <input type="text" className="form-input" required value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} />
+          </div>
+        </div>
+
+        {/* Edit Form */}
+        <div className="card">
+          <div className="card-header"><div className="card-title">Profile Information</div></div>
+
+          {msg.text && (
+            <div style={{
+              padding: '12px 14px', borderRadius: '8px', marginBottom: '18px', fontSize: '0.86rem',
+              background: msg.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(244,63,94,0.1)',
+              color: msg.type === 'success' ? 'var(--status-approved)' : 'var(--status-rejected)',
+              border: `1px solid ${msg.type === 'success' ? 'rgba(34,197,94,0.25)' : 'rgba(244,63,94,0.25)'}`
+            }}>
+              {msg.text}
             </div>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Email Address</label>
-            <input type="email" className="form-input" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Change Password</label>
-            <input type="password" className="form-input" placeholder="Leave blank to keep current password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
-          </div>
-          <div style={{ marginTop: '24px' }}>
-            <button type="submit" className="btn btn-primary">Save Changes</button>
-          </div>
-        </form>
+          )}
+
+          <form onSubmit={handleSave}>
+            <div className="form-row">
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Last Name *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  required
+                  value={formData.last_name}
+                  onChange={e => setFormData({ ...formData, last_name: e.target.value })}
+                />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Middle Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Santos"
+                  value={formData.middle_name}
+                  onChange={e => setFormData({ ...formData, middle_name: e.target.value })}
+                />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">First Name *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  required
+                  value={formData.first_name}
+                  onChange={e => setFormData({ ...formData, first_name: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Email Address *</label>
+              <input
+                type="email"
+                className="form-input"
+                required
+                value={formData.email}
+                onChange={e => setFormData({ ...formData, email: e.target.value })}
+              />
+            </div>
+
+            <div style={{ margin: '24px 0 16px 0', borderTop: '1px solid var(--color-border)', paddingTop: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', marginBottom: '4px' }}>
+                <Lock size={16} color="var(--primary-color)" /> Change Password
+              </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                Leave password fields blank if you do not wish to change your password.
+              </p>
+
+              <div className="form-group">
+                <label className="form-label">Current Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showCurrentPass ? 'text' : 'password'}
+                    className="form-input"
+                    placeholder="Enter current password to verify"
+                    value={formData.current_password}
+                    onChange={e => setFormData({ ...formData, current_password: e.target.value })}
+                    style={{ paddingRight: '40px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPass(!showCurrentPass)}
+                    style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
+                  >
+                    {showCurrentPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">New Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showNewPass ? 'text' : 'password'}
+                      className="form-input"
+                      placeholder="Minimum 6 characters"
+                      value={formData.new_password}
+                      onChange={e => setFormData({ ...formData, new_password: e.target.value })}
+                      style={{ paddingRight: '40px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPass(!showNewPass)}
+                      style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
+                    >
+                      {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">Confirm Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showConfirmPass ? 'text' : 'password'}
+                      className="form-input"
+                      placeholder="Re-enter new password"
+                      value={formData.confirm_password}
+                      onChange={e => setFormData({ ...formData, confirm_password: e.target.value })}
+                      style={{ paddingRight: '40px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPass(!showConfirmPass)}
+                      style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
+                    >
+                      {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '24px' }}>
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Saving Changes...' : 'Save Profile Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </>
   );

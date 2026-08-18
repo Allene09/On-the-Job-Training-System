@@ -13,18 +13,13 @@ class AdminModel {
   }
 
   static async getUsers() {
-    const [rows] = await pool.query(`
-      SELECT u.*, 
-          s.student_id, s.full_name AS student_name, s.student_number, s.course,
-          st.staff_id, st.full_name AS staff_name, st.employee_id,
-          a.admin_id, a.full_name AS admin_name
-      FROM users u
-      LEFT JOIN students s ON u.user_id = s.user_id
-      LEFT JOIN staff st ON u.user_id = st.user_id
-      LEFT JOIN admins a ON u.user_id = a.user_id
-      ORDER BY u.created_at DESC
-    `);
-    return rows;
+    const [rows] = await pool.query('CALL sp_GetAllUsers()');
+    return rows[0];
+  }
+
+  static async updateUserStatus(userId, status) {
+    await pool.query('CALL sp_UpdateUserStatus(?, ?)', [userId, status]);
+    return { user_id: userId, status };
   }
 
   static async createRequirementType(data) {
@@ -44,8 +39,8 @@ class AdminModel {
     return rows[0];
   }
 
-  static async approveAccount(userId, adminId = 1, hashedPassword) {
-    await pool.query('CALL sp_ApproveStudentAccount(?, ?)', [userId, hashedPassword]);
+  static async approveAccount(userId, adminId = 1, hashedPassword, plainPassword = '') {
+    await pool.query('CALL sp_ApproveStudentAccount(?, ?, ?)', [userId, hashedPassword, plainPassword]);
 
     // Check if user is a student to auto-approve pending company applications
     const [userRows] = await pool.query('SELECT role FROM users WHERE user_id = ?', [userId]);
@@ -77,7 +72,10 @@ class AdminModel {
   }
 
   static async createUser(data) {
-    const { email, password, role, full_name, employee_id, student_number, course, year_level, gender, department } = data;
+    const {
+      email, password, role, full_name, first_name, middle_name, last_name,
+      employee_id, student_number, course, year_level, gender, department, contact_number, address
+    } = data;
     const hashedPassword = await bcrypt.hash(password, 10);
     
     // Check existing
@@ -85,20 +83,32 @@ class AdminModel {
     if (existing.length > 0) throw new Error("Email already registered");
 
     const initialStatus = role === 'staff' ? 'pending_admin_approval' : 'active';
+    const plainPassToStore = initialStatus === 'active' ? password : null;
 
     // Insert user
     const [userRes] = await pool.query(
-      'INSERT INTO users (email, password_hash, role, status, requires_password_change) VALUES (?, ?, ?, ?, ?)',
-      [email, hashedPassword, role, initialStatus, 1]
+      'INSERT INTO users (email, password_hash, plain_password, role, status, requires_password_change) VALUES (?, ?, ?, ?, ?, ?)',
+      [email, hashedPassword, plainPassToStore, role, initialStatus, 1]
     );
     const userId = userRes.insertId;
 
+    const constructedFullName = full_name || [first_name, middle_name, last_name].filter(Boolean).join(' ');
+
     if (role === 'admin') {
-      await pool.query('INSERT INTO admins (user_id, full_name) VALUES (?, ?)', [userId, full_name]);
+      await pool.query(
+        'INSERT INTO admins (user_id, full_name, first_name, middle_name, last_name) VALUES (?, ?, ?, ?, ?)',
+        [userId, constructedFullName, first_name || '', middle_name || '', last_name || '']
+      );
     } else if (role === 'staff') {
-      await pool.query('INSERT INTO staff (user_id, full_name, employee_id, department) VALUES (?, ?, ?, ?)', [userId, full_name, employee_id || '', department || '']);
+      await pool.query(
+        'INSERT INTO staff (user_id, full_name, first_name, middle_name, last_name, employee_id, department, contact_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [userId, constructedFullName, first_name || '', middle_name || '', last_name || '', employee_id || '', department || '', contact_number || '']
+      );
     } else if (role === 'student') {
-      await pool.query('INSERT INTO students (user_id, student_number, full_name, gender, course, year_level) VALUES (?, ?, ?, ?, ?, ?)', [userId, student_number || `SN-${Date.now()}`, full_name, gender || '', course || '', year_level || '']);
+      await pool.query(
+        'INSERT INTO students (user_id, student_number, full_name, first_name, middle_name, last_name, gender, course, year_level, contact_number, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [userId, student_number || `SN-${Date.now()}`, constructedFullName, first_name || '', middle_name || '', last_name || '', gender || '', course || '', year_level || '', contact_number || '', address || '']
+      );
     }
 
     // Return created user

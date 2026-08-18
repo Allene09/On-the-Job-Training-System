@@ -1,4 +1,5 @@
 const AdminModel = require('../models/AdminModel');
+const bcrypt = require('bcrypt');
 
 exports.getAdminStats = async (req, res) => {
   try {
@@ -37,27 +38,91 @@ exports.getGraphicalStats = async (req, res) => {
 exports.getUsers = async (req, res) => {
   try {
     const usersData = await AdminModel.getUsers();
-    const users = usersData.map(u => ({
-      user_id: u.user_id,
-      student_id: u.student_id,
-      staff_id: u.staff_id,
-      email: u.email,
-      role: u.role,
-      status: u.status,
-      requires_password_change: u.requires_password_change,
-      created_at: u.created_at,
-      full_name: u.student_name || u.staff_name || u.admin_name,
-      student_number: u.student_number,
-      employee_id: u.employee_id,
-      course: u.course,
-      details: {
-        full_name: u.student_name || u.staff_name || u.admin_name,
-        student_number: u.student_number,
-        employee_id: u.employee_id,
-        course: u.course
+    const users = usersData.map(u => {
+      const isPending = u.status === 'pending_admin_approval' || u.status === 'pending';
+      const firstName = u.first_name || '';
+      const middleName = u.middle_name || '';
+      const lastName = u.last_name || '';
+      const fullName = u.full_name || [firstName, middleName, lastName].filter(Boolean).join(' ') || u.email;
+
+      // Password visibility rule: If approved/active, seen. If not yet approved, not seen (null).
+      let visiblePassword = null;
+      if (!isPending) {
+        visiblePassword = u.plain_password || (firstName && lastName ? `${firstName}${lastName}123`.toLowerCase().replace(/\s+/g, '') : null);
       }
-    }));
+
+      const contactNumber = u.student_contact || u.staff_contact || u.contact_number || '';
+      const address = u.address || '';
+      const studentNumber = u.student_number || '';
+      const employeeId = u.employee_id || '';
+      const course = u.course || '';
+      const yearLevel = u.year_level || '';
+      const gender = u.gender || '';
+      const department = u.department || '';
+
+      const detailsObj = {
+        full_name: fullName,
+        first_name: firstName,
+        middle_name: middleName,
+        last_name: lastName,
+        student_number: studentNumber,
+        employee_id: employeeId,
+        course: course,
+        year_level: yearLevel,
+        gender: gender,
+        contact_number: contactNumber,
+        address: address,
+        department: department
+      };
+
+      return {
+        user_id: u.user_id,
+        student_id: u.student_id,
+        staff_id: u.staff_id,
+        admin_id: u.admin_id,
+        email: u.email,
+        role: u.role,
+        status: u.status,
+        requires_password_change: u.requires_password_change === 1,
+        created_at: u.created_at,
+        full_name: fullName,
+        first_name: firstName,
+        middle_name: middleName,
+        last_name: lastName,
+        student_number: studentNumber,
+        employee_id: employeeId,
+        course: course,
+        year_level: yearLevel,
+        gender: gender,
+        contact_number: contactNumber,
+        address: address,
+        department: department,
+        plain_password: visiblePassword,
+        details: detailsObj
+      };
+    });
     return res.json({ success: true, data: users });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.updateUserStatus = async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id || req.body.user_id);
+    const { status } = req.body;
+
+    if (!userId || !status) {
+      return res.status(400).json({ success: false, message: 'user_id and status are required' });
+    }
+
+    if (!['active', 'inactive', 'pending', 'pending_admin_approval'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+
+    await AdminModel.updateUserStatus(userId, status);
+    return res.json({ success: true, message: `User status updated to ${status}`, data: { user_id: userId, status } });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, message: 'Server error' });
@@ -85,6 +150,9 @@ exports.getPendingAccounts = async (req, res) => {
       created_at: u.created_at,
       details: {
         full_name: u.full_name,
+        first_name: u.first_name,
+        middle_name: u.middle_name,
+        last_name: u.last_name,
         student_number: u.student_number,
         course: u.course,
         year_level: u.year_level
@@ -109,12 +177,13 @@ exports.approveAccount = async (req, res) => {
     let generatedPassword = 'password123';
     if (user && user.first_name && user.last_name) {
       generatedPassword = `${user.first_name}${user.last_name}123`.toLowerCase().replace(/\s+/g, '');
+    } else if (user && user.full_name) {
+      generatedPassword = `${user.full_name.replace(/\s+/g, '')}123`.toLowerCase();
     }
 
-    const bcrypt = require('bcrypt');
     const hashedPassword = await bcrypt.hash(generatedPassword, 10);
     
-    await AdminModel.approveAccount(user_id, admin_id, hashedPassword);
+    await AdminModel.approveAccount(user_id, admin_id, hashedPassword, generatedPassword);
     
     // Simulate sending email
     console.log(`[SIMULATED EMAIL] Account approved! Email sent to user_id ${user_id} with password: ${generatedPassword}`);
@@ -149,6 +218,7 @@ exports.createUser = async (req, res) => {
         email: result.user.email,
         role: result.user.role,
         status: result.user.status,
+        plain_password: result.user.plain_password,
         details: result.profile
       }
     });

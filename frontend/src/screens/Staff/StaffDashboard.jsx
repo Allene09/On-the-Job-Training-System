@@ -4,7 +4,8 @@ import API_BASE_URL, { fetchWithAuth } from '../../config/api';
 import { toast } from 'react-hot-toast';
 import {
   LayoutDashboard, Users, FileCheck, Briefcase, ClipboardList,
-  Star, CheckCircle2, XCircle, AlertCircle, Bell, Clock, TrendingUp, Building2, Eye, EyeOff
+  Star, CheckCircle2, XCircle, AlertCircle, Bell, Clock, TrendingUp, Building2, Eye, EyeOff,
+  Lock, Shield, Copy, Check
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -497,6 +498,16 @@ function EvaluationsView({ evaluations, placements, students, onAddEval }) {
           );
         })}
       </div>
+      <div className="form-group">
+        <label className="form-label">Remarks</label>
+        <textarea className="form-textarea" placeholder="e.g. Excellent technical performance and teamwork" value={evalForm.remarks} onChange={e => setEvalForm({ ...evalForm, remarks: e.target.value })} style={{ minHeight: '80px' }} />
+      </div>
+      <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={() => {
+        if (!evalForm.placement_id) return toast.error('Please select a student placement');
+        submitEvaluation();
+      }}>
+        <Star size={16} /> Save Evaluation
+      </button>
     </>
   );
 }
@@ -510,6 +521,8 @@ function StudentProfilingView() {
     course: '',
     year_section: '',
     gender: '',
+    contact_number: '',
+    address: '',
     email: ''
   });
   const [loading, setLoading] = useState(false);
@@ -526,9 +539,9 @@ function StudentProfilingView() {
 
   const handleNameChange = (field, value) => {
     const updatedForm = { ...formData, [field]: value };
-    const first = updatedForm.first_name.replace(/[^a-zA-Z]/g, '').toLowerCase();
-    const last = updatedForm.last_name.replace(/[^a-zA-Z]/g, '').toLowerCase();
-    const autoGen = first && last ? `${first}${last}@student.edu.ph` : '';
+    const first = updatedForm.first_name.toLowerCase().trim().replace(/\s+/g, '');
+    const last = updatedForm.last_name.toLowerCase().trim().replace(/\s+/g, '');
+    const autoGen = first && last ? `${first}.${last}@bisu.edu.ph` : '';
 
     setFormData({
       ...updatedForm,
@@ -538,6 +551,12 @@ function StudentProfilingView() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (formData.contact_number && formData.contact_number.length !== 11) {
+      toast.error('Contact number must be exactly 11 digits (e.g. 09123456789)');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -555,13 +574,15 @@ function StudentProfilingView() {
           course: formData.course,
           year_section: formData.year_section,
           year_level: formData.year_section,
+          contact_number: formData.contact_number,
+          address: formData.address,
           company_id: null
         })
       });
       const data = await res.json();
       if (data.success) {
         toast.success(`Account created successfully! Admin approval is pending. (Email: ${formData.email})`);
-        setFormData({ first_name: '', middle_name: '', last_name: '', course: '', year_section: '', gender: '', email: '' });
+        setFormData({ first_name: '', middle_name: '', last_name: '', course: '', year_section: '', gender: '', contact_number: '', address: '', email: '', student_number: '' });
         generateStudentId();
       } else {
         toast.error(data.message || 'Registration failed');
@@ -587,22 +608,22 @@ function StudentProfilingView() {
 
           <div style={{ display: 'flex', gap: '16px' }}>
             <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-              <label className="form-label">First Name</label>
-              <input type="text" className="form-input" required value={formData.first_name} onChange={e => handleNameChange('first_name', e.target.value)} />
+              <label className="form-label">Last Name *</label>
+              <input type="text" className="form-input" required value={formData.last_name} onChange={e => handleNameChange('last_name', e.target.value)} />
             </div>
             <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
               <label className="form-label">Middle Name</label>
-              <input type="text" className="form-input" value={formData.middle_name} onChange={e => handleNameChange('middle_name', e.target.value)} placeholder="(Optional)" />
+              <input type="text" className="form-input" value={formData.middle_name} onChange={e => handleNameChange('middle_name', e.target.value)} placeholder="e.g. Santos" />
             </div>
             <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-              <label className="form-label">Last Name</label>
-              <input type="text" className="form-input" required value={formData.last_name} onChange={e => handleNameChange('last_name', e.target.value)} />
+              <label className="form-label">First Name *</label>
+              <input type="text" className="form-input" required value={formData.first_name} onChange={e => handleNameChange('first_name', e.target.value)} />
             </div>
           </div>
 
           <div className="form-group">
             <label className="form-label">Course</label>
-            <input type="text" className="form-input" required value={formData.course} onChange={e => setFormData({ ...formData, course: e.target.value })} />
+            <input type="text" className="form-input" required value={formData.course} onChange={e => setFormData({ ...formData, course: e.target.value })} placeholder="e.g. BS Computer Science" />
           </div>
 
           <div className="form-group">
@@ -620,12 +641,40 @@ function StudentProfilingView() {
             </select>
           </div>
 
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+              <label className="form-label">Contact Number</label>
+              <input
+                type="tel"
+                inputMode="numeric"
+                maxLength={11}
+                className="form-input"
+                placeholder="e.g. 09123456789"
+                value={formData.contact_number}
+                onChange={e => setFormData({ ...formData, contact_number: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+              />
+            </div>
+            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+              <label className="form-label">Address</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. Tagbilaran City, Bohol"
+                value={formData.address}
+                onChange={e => setFormData({ ...formData, address: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="divider" style={{ margin: '12px 0 4px 0', borderColor: 'var(--color-border)' }} />
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: '0 0 4px 0', color: 'var(--text-primary)' }}>Account Information</h3>
+
           <div className="form-group">
             <label className="form-label">Email Address (Auto-generated)</label>
             <input type="email" className="form-input" required readOnly value={formData.email} style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }} />
           </div>
 
-          <button type="submit" className="btn btn-primary" disabled={loading} style={{ justifyContent: 'center' }}>
+          <button type="submit" className="btn btn-primary" disabled={loading} style={{ justifyContent: 'center', marginTop: '8px' }}>
             {loading ? 'Creating...' : 'Create Student Profile'}
           </button>
         </form>
@@ -636,24 +685,68 @@ function StudentProfilingView() {
 
 function StaffProfileView({ currentUser }) {
   const [formData, setFormData] = useState({
-    first_name: currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ')[0] : '',
-    last_name: currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ').slice(1).join(' ') : '',
+    first_name: currentUser?.profile?.first_name || (currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ')[0] : ''),
+    middle_name: currentUser?.profile?.middle_name || '',
+    last_name: currentUser?.profile?.last_name || (currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ').slice(1).join(' ') : ''),
     email: currentUser?.email || '',
-    password: ''
+    employee_id: currentUser?.profile?.employee_id || '',
+    department: currentUser?.profile?.department || '',
+    contact_number: currentUser?.profile?.contact_number || '',
+    current_password: '',
+    new_password: '',
+    confirm_password: ''
   });
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState({ type: '', text: '' });
   const { updateCurrentUser } = useAuth();
 
   useEffect(() => {
     setFormData({
-      first_name: currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ')[0] : '',
-      last_name: currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ').slice(1).join(' ') : '',
+      first_name: currentUser?.profile?.first_name || (currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ')[0] : ''),
+      middle_name: currentUser?.profile?.middle_name || '',
+      last_name: currentUser?.profile?.last_name || (currentUser?.profile?.full_name ? currentUser.profile.full_name.split(' ').slice(1).join(' ') : ''),
       email: currentUser?.email || '',
-      password: ''
+      employee_id: currentUser?.profile?.employee_id || '',
+      department: currentUser?.profile?.department || '',
+      contact_number: currentUser?.profile?.contact_number || '',
+      current_password: '',
+      new_password: '',
+      confirm_password: ''
     });
   }, [currentUser]);
 
   const handleSave = async (e) => {
     e.preventDefault();
+    setMsg({ type: '', text: '' });
+
+    if (formData.new_password) {
+      if (formData.new_password.length < 6) {
+        setMsg({ type: 'error', text: 'New password must be at least 6 characters long.' });
+        toast.error('New password must be at least 6 characters long.');
+        return;
+      }
+      if (formData.new_password !== formData.confirm_password) {
+        setMsg({ type: 'error', text: 'New password and confirm password do not match.' });
+        toast.error('New password and confirm password do not match.');
+        return;
+      }
+      if (!formData.current_password) {
+        setMsg({ type: 'error', text: 'Please enter your current password to set a new password.' });
+        toast.error('Please enter your current password to set a new password.');
+        return;
+      }
+    }
+
+    if (formData.contact_number && formData.contact_number.length !== 11) {
+      setMsg({ type: 'error', text: 'Contact number must be exactly 11 digits (e.g. 09123456789)' });
+      toast.error('Contact number must be exactly 11 digits (e.g. 09123456789)');
+      return;
+    }
+
+    setSaving(true);
     try {
       const res = await fetchWithAuth(`${API_BASE_URL}/auth/profile`, {
         method: 'PUT',
@@ -662,54 +755,253 @@ function StaffProfileView({ currentUser }) {
           user_id: currentUser.user_id,
           role: currentUser.role,
           email: formData.email,
-          password: formData.password,
-          full_name: `${formData.first_name} ${formData.last_name}`.trim()
+          first_name: formData.first_name,
+          middle_name: formData.middle_name,
+          last_name: formData.last_name,
+          employee_id: formData.employee_id,
+          department: formData.department,
+          contact_number: formData.contact_number,
+          current_password: formData.current_password,
+          password: formData.new_password,
+          confirm_password: formData.confirm_password,
+          full_name: [formData.first_name, formData.middle_name, formData.last_name].filter(Boolean).join(' ').trim()
         })
       });
       const data = await res.json();
       if (data.success) {
         updateCurrentUser(data.user);
+        setMsg({ type: 'success', text: 'Profile updated successfully!' });
         toast.success('Profile updated successfully!');
-        setFormData(prev => ({ ...prev, password: '' }));
+        setFormData(prev => ({
+          ...prev,
+          current_password: '',
+          new_password: '',
+          confirm_password: ''
+        }));
       } else {
+        setMsg({ type: 'error', text: data.message || 'Unable to update profile' });
         toast.error(data.message || 'Unable to update profile');
       }
     } catch (error) {
+      setMsg({ type: 'error', text: 'Server error while updating profile' });
       toast.error('Server error while updating profile');
+    } finally {
+      setSaving(false);
     }
   };
+
+  const displayName = [formData.first_name, formData.middle_name, formData.last_name].filter(Boolean).join(' ') || currentUser?.profile?.full_name || 'Staff Member';
 
   return (
     <>
       <div className="page-header">
         <h1>My Profile</h1>
-        <p>Manage your account settings</p>
+        <p>Manage your coordinator account settings and personal details</p>
       </div>
-      <div className="card animate-fade-in-up delay-100" style={{ maxWidth: '600px' }}>
-        <div className="card-header"><div className="card-title">Edit Profile</div></div>
-        <form onSubmit={handleSave}>
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">First Name</label>
-              <input type="text" className="form-input" required value={formData.first_name} onChange={e => setFormData({ ...formData, first_name: e.target.value })} />
+
+      <div style={{ maxWidth: '640px' }}>
+        <div style={{
+          background: 'rgba(255,255,255,0.03)', border: '1px solid var(--color-border)',
+          borderRadius: '16px', padding: '20px', marginBottom: '24px',
+          display: 'flex', alignItems: 'center', gap: '16px'
+        }}>
+          <div style={{
+            width: '60px', height: '60px', borderRadius: '50%',
+            background: 'rgba(168,85,247,0.15)', color: '#a855f7',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '1.5rem', fontWeight: 800
+          }}>
+            {displayName[0] ? displayName[0].toUpperCase() : 'S'}
+          </div>
+          <div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>{displayName}</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+              {formData.employee_id ? `Employee ID: ${formData.employee_id} • ` : ''}{currentUser?.email}
             </div>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Last Name</label>
-              <input type="text" className="form-input" required value={formData.last_name} onChange={e => setFormData({ ...formData, last_name: e.target.value })} />
+            <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+              <span className="badge badge-submitted"><span className="badge-dot" /> OJT Coordinator</span>
+              {formData.department && <span className="badge badge-active">{formData.department}</span>}
             </div>
           </div>
-          <div className="form-group">
-            <label className="form-label">Email Address</label>
-            <input type="email" className="form-input" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Change Password</label>
-            <input type="password" className="form-input" placeholder="Leave blank to keep current password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
-          </div>
-          <div style={{ marginTop: '24px' }}>
-            <button type="submit" className="btn btn-primary">Save Changes</button>
-          </div>
-        </form>
+        </div>
+
+        <div className="card">
+          <div className="card-header"><div className="card-title">Coordinator Information</div></div>
+
+          {msg.text && (
+            <div style={{
+              padding: '12px 14px', borderRadius: '8px', marginBottom: '18px', fontSize: '0.86rem',
+              background: msg.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(244,63,94,0.1)',
+              color: msg.type === 'success' ? 'var(--status-approved)' : 'var(--status-rejected)',
+              border: `1px solid ${msg.type === 'success' ? 'rgba(34,197,94,0.25)' : 'rgba(244,63,94,0.25)'}`
+            }}>
+              {msg.text}
+            </div>
+          )}
+
+          <form onSubmit={handleSave}>
+            <div className="form-row">
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Last Name *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  required
+                  value={formData.last_name}
+                  onChange={e => setFormData({ ...formData, last_name: e.target.value })}
+                />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Middle Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Santos"
+                  value={formData.middle_name}
+                  onChange={e => setFormData({ ...formData, middle_name: e.target.value })}
+                />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">First Name *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  required
+                  value={formData.first_name}
+                  onChange={e => setFormData({ ...formData, first_name: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Employee ID</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  readOnly
+                  value={formData.employee_id}
+                  style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)' }}
+                />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Department</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. College of Technology"
+                  value={formData.department}
+                  onChange={e => setFormData({ ...formData, department: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Contact Number</label>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={11}
+                  className="form-input"
+                  placeholder="e.g. 09123456789"
+                  value={formData.contact_number}
+                  onChange={e => setFormData({ ...formData, contact_number: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+                />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Email Address *</label>
+                <input
+                  type="email"
+                  className="form-input"
+                  required
+                  value={formData.email}
+                  onChange={e => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div style={{ margin: '24px 0 16px 0', borderTop: '1px solid var(--color-border)', paddingTop: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', marginBottom: '4px' }}>
+                <Lock size={16} color="var(--primary-color)" /> Change Password
+              </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                Leave password fields blank if you do not wish to change your password.
+              </p>
+
+              <div className="form-group">
+                <label className="form-label">Current Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showCurrentPass ? 'text' : 'password'}
+                    className="form-input"
+                    placeholder="Enter current password to verify"
+                    value={formData.current_password}
+                    onChange={e => setFormData({ ...formData, current_password: e.target.value })}
+                    style={{ paddingRight: '40px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPass(!showCurrentPass)}
+                    style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
+                  >
+                    {showCurrentPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">New Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showNewPass ? 'text' : 'password'}
+                      className="form-input"
+                      placeholder="Minimum 6 characters"
+                      value={formData.new_password}
+                      onChange={e => setFormData({ ...formData, new_password: e.target.value })}
+                      style={{ paddingRight: '40px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPass(!showNewPass)}
+                      style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
+                    >
+                      {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">Confirm Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showConfirmPass ? 'text' : 'password'}
+                      className="form-input"
+                      placeholder="Re-enter new password"
+                      value={formData.confirm_password}
+                      onChange={e => setFormData({ ...formData, confirm_password: e.target.value })}
+                      style={{ paddingRight: '40px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPass(!showConfirmPass)}
+                      style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
+                    >
+                      {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '24px' }}>
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Saving Changes...' : 'Save Profile Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </>
   );
