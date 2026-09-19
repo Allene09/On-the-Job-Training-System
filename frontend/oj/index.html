@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>OJTrack - Student Registration Form</title>
+  <style>
+    /* Classic / Old-School Web Design */
+    body {
+      background-color: #f0f2f5;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 13px;
+      color: #000000;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      width: 780px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border: 1px solid #999999;
+      box-shadow: 2px 2px 5px #cccccc;
+    }
+
+    /* Classic Header */
+    .header {
+      background-color: #0b3c5d;
+      color: #ffffff;
+      padding: 15px 20px;
+      border-bottom: 3px solid #d9b310;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0.5px;
+    }
+
+    .header p {
+      margin: 4px 0 0 0;
+      font-size: 12px;
+      color: #e0e6ed;
+    }
+
+    .nav-bar {
+      background-color: #e2e8f0;
+      padding: 6px 20px;
+      border-bottom: 1px solid #cbd5e1;
+      font-size: 12px;
+    }
+
+    .content {
+      padding: 20px;
+    }
+
+    /* Classic Fieldsets */
+    fieldset {
+      border: 1px solid #b0bec5;
+      padding: 15px 20px;
+      margin-bottom: 18px;
+      background-color: #fafbfc;
+    }
+
+    legend {
+      font-weight: bold;
+      color: #0b3c5d;
+      padding: 0 6px;
+      font-size: 13px;
+    }
+
+    table.form-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    table.form-table td {
+      padding: 6px 8px;
+      vertical-align: middle;
+    }
+
+    td.label-col {
+      width: 25%;
+      font-weight: bold;
+      color: #333333;
+      text-align: right;
+      padding-right: 12px;
+    }
+
+    td.input-col {
+      width: 75%;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    select {
+      width: 280px;
+      padding: 4px 6px;
+      border: 1px solid #888888;
+      font-family: inherit;
+      font-size: 12px;
+      box-sizing: border-box;
+      background-color: #ffffff;
+    }
+
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    input[type="tel"]:focus,
+    select:focus {
+      border-color: #0b3c5d;
+      outline: none;
+      background-color: #fffde7;
+    }
+
+    input.readonly {
+      background-color: #eeeeee;
+      color: #555555;
+      border: 1px solid #bbbbbb;
+    }
+
+    .note {
+      font-size: 11px;
+      color: #666666;
+      margin-left: 6px;
+    }
+
+    .required {
+      color: #cc0000;
+    }
+
+    /* Buttons */
+    .btn-bar {
+      text-align: center;
+      padding: 15px 0 5px 0;
+      border-top: 1px solid #e0e0e0;
+      margin-top: 10px;
+    }
+
+    .btn {
+      padding: 5px 16px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      border: 1px solid #777777;
+      background-color: #e9e9e9;
+      color: #000000;
+      border-radius: 2px;
+      margin: 0 4px;
+    }
+
+    .btn:hover {
+      background-color: #dcdcdc;
+    }
+
+    .btn-primary {
+      background-color: #0b3c5d;
+      border-color: #062438;
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background-color: #14507a;
+    }
+
+    .btn-small {
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: normal;
+    }
+
+    /* Alert / Message */
+    .msg-box {
+      display: none;
+      padding: 8px 12px;
+      margin-bottom: 15px;
+      border: 1px solid #b0bec5;
+      font-size: 12px;
+    }
+
+    .msg-error {
+      background-color: #ffebee;
+      border-color: #ef9a9a;
+      color: #c62828;
+    }
+
+    .msg-success {
+      background-color: #e8f5e9;
+      border-color: #a5d6a7;
+      color: #2e7d32;
+    }
+
+    /* Records Table (Classic HTML Data Grid) */
+    .records-section {
+      margin-top: 25px;
+      border-top: 2px solid #0b3c5d;
+      padding-top: 15px;
+    }
+
+    .records-section h3 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      color: #0b3c5d;
+    }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #999999;
+      font-size: 11px;
+    }
+
+    table.data-table th {
+      background-color: #d1d5db;
+      border: 1px solid #999999;
+      padding: 6px 8px;
+      text-align: left;
+    }
+
+    table.data-table td {
+      border: 1px solid #cccccc;
+      padding: 5px 8px;
+    }
+
+    table.data-table tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+
+    .btn-delete {
+      color: #cc0000;
+      background: none;
+      border: none;
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 11px;
+      padding: 0;
+    }
+
+    /* Modal / Popup for Confirmation Slip */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background-color: #ffffff;
+      width: 550px;
+      border: 2px solid #0b3c5d;
+      padding: 20px;
+      box-shadow: 4px 4px 10px #333333;
+    }
+
+    .slip-header {
+      border-bottom: 2px solid #000000;
+      padding-bottom: 8px;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+
+    .slip-header h2 {
+      margin: 0;
+      font-size: 16px;
+      text-transform: uppercase;
+    }
+
+    .slip-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+      font-size: 12px;
+    }
+
+    .slip-table td {
+      padding: 5px 6px;
+      border-bottom: 1px dotted #cccccc;
+    }
+
+    .slip-table td.slip-label {
+      width: 35%;
+      font-weight: bold;
+      color: #333333;
+    }
+
+    .footer-text {
+      font-size: 11px;
+      color: #777777;
+      text-align: center;
+      margin-top: 20px;
+      border-top: 1px solid #cccccc;
+      padding-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <h1>OJTRACK - ON-THE-JOB TRAINING SYSTEM</h1>
+    <p>Official Student Registration Portal &bull; Static Version</p>
+  </div>
+
+  <div class="nav-bar">
+    <strong>Module:</strong> Student OJT Application & Registration &nbsp;|&nbsp; <strong>Mode:</strong> Offline / Local Storage Only
+  </div>
+
+  <div class="content">
+
+    <!-- Message Alerts -->
+    <div id="msgBox" class="msg-box"></div>
+
+    <form id="regForm" autocomplete="off">
+      
+      <!-- Section 1: Identification -->
+      <fieldset>
+        <legend>1. System Identification</legend>
+        <table class="form-table">
+          <tr>
+            <td class="label-col">Student ID Number:</td>
+            <td class="input-col">
+              <input type="text" id="student_number" name="student_number" class="readonly" readonly>
+              <button type="button" class="btn btn-small" id="btnRegenId">Generate New</button>
+              <span class="note">(Auto-generated ID)</span>
+            </td>
+          </tr>
+        </table>
+      </fieldset>
+
+      <!-- Section 2: Personal Info -->
+      <fieldset>
+        <legend>2. Personal Information</legend>
+        <table class="form-table">
+          <tr>
+            <td class="label-col">First Name: <span class="required">*</span></td>
+            <td class="input-col">
+              <input type="text" id="first_name" name="first_name" required>
+            </td>
+          </tr>
+          <tr>
+            <td class="label-col">Middle Initial: <span class="required">*</span></td>
+            <td class="input-col">
+              <input type="text" id="middle_initial" name="middle_initial" placeholder="e.g. S." required>
+            </td>
+          </tr>
+          <tr>
+            <td class="label-col">Last Name:</td>
+            <td class="input-col">
+              <input type="text" id="last_name" name="last_name">
+              <span class="note">(Optional)</span>
+            </td>
+          </tr>
+          <tr>
+            <td class="label-col">Gender: <span class="required">*</span></td>
+            <td class="input-col">
+              <select id="gender" name="gender" required>
+                <option value="">-- Select Gender --</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </td>
+          </tr>
+        </table>
+      </fieldset>
+
+      <!-- Section 3: Academic Profile -->
+      <fieldset>
+        <legend>3. Academic Details</legend>
+        <table class="form-table">
+          <tr>
+            <td class="label-col">Course / Degree: <span class="required">*</span></td>
+            <td class="input-col">
+              <select id="course" name="course" required>
+                <option value="">-- Select Course --</option>
+                <option value="BS Computer Science">BS Computer Science</option>
+                <option value="BS Information Technology">BS Information Technology</option>
+                <option value="BS Information Systems">BS Information Systems</option>
+                <option value="BS Computer Engineering">BS Computer Engineering</option>
+                <option value="BS Civil Engineering">BS Civil Engineering</option>
+                <option value="BS Electrical Engineering">BS Electrical Engineering</option>
+                <option value="BS Business Administration">BS Business Administration</option>
+                <option value="BS Hospitality Management">BS Hospitality Management</option>
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <td class="label-col">Year and Section: <span class="required">*</span></td>
+            <td class="input-col">
+              <input type="text" id="year_section" name="year_section" placeholder="e.g. 4th Year - Section A" required>
+            </td>
+          </tr>
+        </table>
+      </fieldset>
+
+      <!-- Section 4: Contact & Placement -->
+      <fieldset>
+        <legend>4. Contact & Host Training Establishment (HTE)</legend>
+        <table class="form-table">
+          <tr>
+            <td class="label-col">Contact Number: <span class="required">*</span></td>
+            <td class="input-col">
+              <input type="tel" id="contact_number" name="contact_number" maxlength="11" placeholder="09123456789" required>
+              <span class="note">(11 digits, e.g. 09XXXXXXXXX)</span>
+            </td>
+          </tr>
+          <tr>
+            <td class="label-col">Home Address:</td>
+            <td class="input-col">
+              <input type="text" id="address" name="address" style="width: 360px;" placeholder="e.g. Tagbilaran City, Bohol">
+            </td>
+          </tr>
+          <tr>
+            <td class="label-col">Target Company / HTE:</td>
+            <td class="input-col">
+              <select id="company_name" name="company_name" style="width: 360px;">
+                <option value="Direct Registration (Pending Placement)">Direct Registration (Pending Placement)</option>
+                <option value="Nexus Cyber Technologies Inc.">Nexus Cyber Technologies Inc.</option>
+                <option value="InnoData Analytics Lab">InnoData Analytics Lab</option>
+                <option value="Apex Infrastructure Solutions">Apex Infrastructure Solutions</option>
+                <option value="Bohol Digital Creative Hub">Bohol Digital Creative Hub</option>
+                <option value="Global Vanguard Systems">Global Vanguard Systems</option>
+              </select>
+            </td>
+          </tr>
+        </table>
+      </fieldset>
+
+      <!-- Section 5: Account Info -->
+      <fieldset>
+        <legend>5. System Account Details</legend>
+        <table class="form-table">
+          <tr>
+            <td class="label-col">Generated Email:</td>
+            <td class="input-col">
+              <input type="email" id="email" name="email" class="readonly" readonly style="width: 320px;" placeholder="firstname.lastname@bisu.edu.ph">
+              <span class="note">(Automatically computed)</span>
+            </td>
+          </tr>
+          <tr>
+            <td class="label-col">Initial Status:</td>
+            <td class="input-col">
+              <strong>Pending Coordinator Approval</strong>
+            </td>
+          </tr>
+        </table>
+      </fieldset>
+
+      <!-- Action Buttons -->
+      <div class="btn-bar">
+        <input type="submit" id="btnSubmit" value="Submit Registration" class="btn btn-primary">
+        <input type="reset" id="btnReset" value="Reset Form" class="btn">
+      </div>
+    </form>
+
+    <!-- Records Table -->
+    <div class="records-section">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <h3>Registered Students Log (<span id="recordCount">0</span>)</h3>
+        <button type="button" class="btn btn-small" id="btnClearAll" style="display: none;">Clear All Records</button>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Student ID</th>
+            <th>Full Name</th>
+            <th>Course & Section</th>
+            <th>Email</th>
+            <th>HTE Company</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="recordsBody">
+          <!-- Populated dynamically -->
+        </tbody>
+      </table>
+      <div id="noRecordsNotice" style="text-align: center; padding: 12px; color: #777; font-style: italic;">
+        No registered students found in local storage.
+      </div>
+    </div>
+
+    <div class="footer-text">
+      OJTrack System &bull; Static Registration Client &bull; Bohol Island State University
+    </div>
+  </div>
+</div>
+
+<!-- Simple Confirmation Modal -->
+<div class="modal-overlay" id="slipModal">
+  <div class="modal-content">
+    <div class="slip-header">
+      <h2>OJT Registration Confirmation Slip</h2>
+      <div style="font-size: 11px; color: #555;">Bohol Island State University - On-the-Job Training Program</div>
+    </div>
+
+    <table class="slip-table">
+      <tr>
+        <td class="slip-label">Student ID:</td>
+        <td id="slipStudentId" style="font-weight: bold;">-</td>
+      </tr>
+      <tr>
+        <td class="slip-label">Student Name:</td>
+        <td id="slipName">-</td>
+      </tr>
+      <tr>
+        <td class="slip-label">Course & Section:</td>
+        <td id="slipCourse">-</td>
+      </tr>
+      <tr>
+        <td class="slip-label">Gender:</td>
+        <td id="slipGender">-</td>
+      </tr>
+      <tr>
+        <td class="slip-label">Contact Number:</td>
+        <td id="slipContact">-</td>
+      </tr>
+      <tr>
+        <td class="slip-label">Assigned Email:</td>
+        <td id="slipEmail">-</td>
+      </tr>
+      <tr>
+        <td class="slip-label">HTE Placement:</td>
+        <td id="slipCompany">-</td>
+      </tr>
+      <tr>
+        <td class="slip-label">Home Address:</td>
+        <td id="slipAddress">-</td>
+      </tr>
+      <tr>
+        <td class="slip-label">Registration Date:</td>
+        <td id="slipDate">-</td>
+      </tr>
+      <tr>
+        <td class="slip-label">Status:</td>
+        <td style="color: #b7791f; font-weight: bold;">Pending Coordinator Approval</td>
+      </tr>
+    </table>
+
+    <div style="text-align: center; margin-top: 15px;">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print Slip</button>
+      <button type="button" class="btn" id="btnCloseSlip">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var STORAGE_KEY = 'ojtrack_static_registrations';
+
+    var studentIdInput = document.getElementById('student_number');
+    var btnRegenId = document.getElementById('btnRegenId');
+    var firstNameInput = document.getElementById('first_name');
+    var middleInitialInput = document.getElementById('middle_initial') || document.getElementById('middle_name');
+    var lastNameInput = document.getElementById('last_name');
+    var emailInput = document.getElementById('email');
+    var courseSelect = document.getElementById('course');
+    var yearSectionInput = document.getElementById('year_section');
+    var genderSelect = document.getElementById('gender');
+    var contactInput = document.getElementById('contact_number');
+    var addressInput = document.getElementById('address');
+    var companySelect = document.getElementById('company_name');
+    
+    var regForm = document.getElementById('regForm');
+    var btnReset = document.getElementById('btnReset');
+    var msgBox = document.getElementById('msgBox');
+    var recordsBody = document.getElementById('recordsBody');
+    var recordCount = document.getElementById('recordCount');
+    var noRecordsNotice = document.getElementById('noRecordsNotice');
+    var btnClearAll = document.getElementById('btnClearAll');
+
+    var slipModal = document.getElementById('slipModal');
+    var btnCloseSlip = document.getElementById('btnCloseSlip');
+
+    // 1. Generate ID (2026-XXXXXX)
+    function generateId() {
+      var rand = Math.floor(100000 + Math.random() * 900000);
+      return '2026-' + rand;
+    }
+
+    function resetStudentId() {
+      if (studentIdInput) {
+        studentIdInput.value = generateId();
+      }
+    }
+
+    if (btnRegenId) {
+      btnRegenId.addEventListener('click', resetStudentId);
+    }
+
+    // 2. Email generation: firstname.lastname@bisu.edu.ph
+    function updateEmail() {
+      if (!emailInput) return;
+      var fn = firstNameInput && firstNameInput.value ? firstNameInput.value.toLowerCase().trim().replace(/[^a-z0-9]/g, '') : '';
+      var ln = lastNameInput && lastNameInput.value ? lastNameInput.value.toLowerCase().trim().replace(/[^a-z0-9]/g, '') : '';
+      
+      if (fn || ln) {
+        var parts = [];
+        if (fn) parts.push(fn);
+        if (ln) parts.push(ln);
+        emailInput.value = parts.join('.') + '@bisu.edu.ph';
+      } else {
+        emailInput.value = '';
+      }
+    }
+
+    if (firstNameInput) {
+      firstNameInput.addEventListener('keyup', updateEmail);
+      firstNameInput.addEventListener('input', updateEmail);
+    }
+    if (middleInitialInput) {
+      middleInitialInput.addEventListener('keyup', updateEmail);
+      middleInitialInput.addEventListener('input', updateEmail);
+    }
+    if (lastNameInput) {
+      lastNameInput.addEventListener('keyup', updateEmail);
+      lastNameInput.addEventListener('input', updateEmail);
+    }
+
+    // 3. Contact formatting (numeric only, max 11)
+    if (contactInput) {
+      contactInput.addEventListener('input', function (e) {
+        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 11);
+      });
+    }
+
+    // 4. Alert helper
+    function showMessage(isError, text) {
+      if (!msgBox) return;
+      msgBox.style.display = 'block';
+      msgBox.className = 'msg-box ' + (isError ? 'msg-error' : 'msg-success');
+      msgBox.innerHTML = (isError ? '<strong>Error:</strong> ' : '<strong>Success:</strong> ') + text;
+    }
+
+    function hideMessage() {
+      if (msgBox) msgBox.style.display = 'none';
+    }
+
+    // 5. Local Storage Records
+    function getRecords() {
+      try {
+        var data = localStorage.getItem(STORAGE_KEY);
+        return data ? JSON.parse(data) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveRecord(item) {
+      var list = getRecords();
+      list.unshift(item);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      renderRecords();
+    }
+
+    function deleteRecord(index) {
+      var list = getRecords();
+      list.splice(index, 1);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      renderRecords();
+    }
+
+    function formatFullName(st) {
+      var parts = [];
+      if (st.last_name) {
+        parts.push(st.last_name + ',');
+      }
+      if (st.first_name) {
+        parts.push(st.first_name);
+      }
+      var mi = st.middle_initial || st.middle_name;
+      if (mi) {
+        parts.push(mi + (mi.length === 1 ? '.' : ''));
+      }
+      return parts.join(' ').trim() || 'N/A';
+    }
+
+    function renderRecords() {
+      if (!recordCount || !recordsBody) return;
+      var list = getRecords();
+      recordCount.textContent = list.length;
+      recordsBody.innerHTML = '';
+
+      if (list.length === 0) {
+        if (noRecordsNotice) noRecordsNotice.style.display = 'block';
+        if (btnClearAll) btnClearAll.style.display = 'none';
+        return;
+      }
+
+      if (noRecordsNotice) noRecordsNotice.style.display = 'none';
+      if (btnClearAll) btnClearAll.style.display = 'inline-block';
+
+      for (var i = 0; i < list.length; i++) {
+        var st = list[i];
+        var tr = document.createElement('tr');
+        var fullName = formatFullName(st);
+        
+        tr.innerHTML = 
+          '<td><strong>' + escapeHtml(st.student_number) + '</strong></td>' +
+          '<td>' + escapeHtml(fullName) + '</td>' +
+          '<td>' + escapeHtml(st.course || '') + ' (' + escapeHtml(st.year_section || '') + ')</td>' +
+          '<td>' + escapeHtml(st.email || '') + '</td>' +
+          '<td>' + escapeHtml(st.company_name || '') + '</td>' +
+          '<td><span style="color: #b7791f; font-weight: bold;">Pending</span></td>' +
+          '<td><button type="button" class="btn-delete" data-index="' + i + '">Delete</button></td>';
+
+        recordsBody.appendChild(tr);
+      }
+
+      var delButtons = recordsBody.querySelectorAll('.btn-delete');
+      for (var j = 0; j < delButtons.length; j++) {
+        delButtons[j].addEventListener('click', function (e) {
+          var idx = parseInt(e.target.getAttribute('data-index'), 10);
+          if (confirm('Delete this registered student record?')) {
+            deleteRecord(idx);
+          }
+        });
+      }
+    }
+
+    if (btnClearAll) {
+      btnClearAll.addEventListener('click', function () {
+        if (confirm('Are you sure you want to clear all registered student records?')) {
+          localStorage.removeItem(STORAGE_KEY);
+          renderRecords();
+        }
+      });
+    }
+
+    if (btnReset) {
+      btnReset.addEventListener('click', function () {
+        hideMessage();
+        setTimeout(function () {
+          resetStudentId();
+          updateEmail();
+        }, 50);
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // 6. Form Submission
+    if (regForm) {
+      regForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        hideMessage();
+
+        var studentNumber = studentIdInput ? studentIdInput.value.trim() : '';
+        var firstName = firstNameInput ? firstNameInput.value.trim() : '';
+        var middleInitial = middleInitialInput ? middleInitialInput.value.trim() : '';
+        var lastName = lastNameInput ? lastNameInput.value.trim() : '';
+        var gender = genderSelect ? genderSelect.value : '';
+        var course = courseSelect ? courseSelect.value : '';
+        var yearSection = yearSectionInput ? yearSectionInput.value.trim() : '';
+        var contact = contactInput ? contactInput.value.trim() : '';
+        var address = addressInput ? addressInput.value.trim() : '';
+        var company = companySelect ? companySelect.value : '';
+        var email = emailInput ? emailInput.value.trim() : '';
+
+        if (!firstName) {
+          showMessage(true, 'First Name is required.');
+          return;
+        }
+
+        if (middleInitialInput && middleInitialInput.hasAttribute('required') && !middleInitial) {
+          showMessage(true, 'Middle Initial is required.');
+          return;
+        }
+
+        if (!gender) {
+          showMessage(true, 'Please select your Gender.');
+          return;
+        }
+
+        if (!course) {
+          showMessage(true, 'Please select your Course.');
+          return;
+        }
+
+        if (!yearSection) {
+          showMessage(true, 'Please provide your Year and Section.');
+          return;
+        }
+
+        if (!contact || contact.length !== 11 || !contact.startsWith('09')) {
+          showMessage(true, 'Contact number must be exactly 11 digits starting with 09 (e.g. 09123456789).');
+          return;
+        }
+
+        var newRecord = {
+          student_number: studentNumber,
+          first_name: firstName,
+          middle_initial: middleInitial,
+          middle_name: middleInitial,
+          last_name: lastName,
+          gender: gender,
+          course: course,
+          year_section: yearSection,
+          contact_number: contact,
+          address: address || 'N/A',
+          company_name: company,
+          email: email || (firstName.toLowerCase().replace(/[^a-z0-9]/g, '') + '@bisu.edu.ph'),
+          registered_at: new Date().toLocaleString()
+        };
+
+        // Save to static storage
+        saveRecord(newRecord);
+
+        // Populate Slip Modal
+        if (document.getElementById('slipStudentId')) document.getElementById('slipStudentId').textContent = newRecord.student_number;
+        if (document.getElementById('slipName')) document.getElementById('slipName').textContent = formatFullName(newRecord);
+        if (document.getElementById('slipCourse')) document.getElementById('slipCourse').textContent = newRecord.course + ' - ' + newRecord.year_section;
+        if (document.getElementById('slipGender')) document.getElementById('slipGender').textContent = newRecord.gender;
+        if (document.getElementById('slipContact')) document.getElementById('slipContact').textContent = newRecord.contact_number;
+        if (document.getElementById('slipEmail')) document.getElementById('slipEmail').textContent = newRecord.email;
+        if (document.getElementById('slipCompany')) document.getElementById('slipCompany').textContent = newRecord.company_name;
+        if (document.getElementById('slipAddress')) document.getElementById('slipAddress').textContent = newRecord.address;
+        if (document.getElementById('slipDate')) document.getElementById('slipDate').textContent = newRecord.registered_at;
+
+        if (slipModal) slipModal.style.display = 'flex';
+        showMessage(false, 'Student registered successfully! Record saved to local database.');
+
+        // Reset form
+        regForm.reset();
+        resetStudentId();
+        updateEmail();
+      });
+    }
+
+    if (btnCloseSlip) {
+      btnCloseSlip.addEventListener('click', function () {
+        if (slipModal) slipModal.style.display = 'none';
+      });
+    }
+
+    // Initialize
+    resetStudentId();
+    renderRecords();
+  })();
+</script>
+
+</body>
+</html>

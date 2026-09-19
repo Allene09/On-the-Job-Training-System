@@ -104,15 +104,39 @@ exports.submitRequirement = async (req, res) => {
 
 exports.applyToCompany = async (req, res) => {
   try {
-    const { student_id, company_id } = req.body;
+    const student_id = req.body.student_id || req.user?.profile?.student_id;
+    const company_id = req.body.company_id;
+    const note = req.body.note || null;
+    const files = req.files || [];
+
+    if (!student_id || !company_id) {
+      return res.status(400).json({ success: false, message: "student_id and company_id are required" });
+    }
+
     const existing = await StudentModel.checkExistingApplication(student_id, company_id);
     if (existing.length > 0) {
       return res.status(400).json({ success: false, message: "Application already exists for this company" });
     }
-    await StudentModel.applyToCompany(student_id, company_id);
-    return res.status(201).json({ success: true, message: "Application submitted to company" });
+
+    const application = await StudentModel.applyToCompany(student_id, company_id, note, files);
+    return res.status(201).json({
+      success: true,
+      message: "Application submitted to company",
+      data: application
+    });
   } catch (error) {
-    console.error(error);
+    console.error("applyToCompany error:", error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.getApplications = async (req, res) => {
+  try {
+    const student_id = req.user?.profile?.student_id || req.query.student_id || 1;
+    const applications = await StudentModel.getStudentApplications(student_id);
+    return res.json({ success: true, data: applications });
+  } catch (error) {
+    console.error("getApplications error:", error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

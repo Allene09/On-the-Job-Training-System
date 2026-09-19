@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import API_BASE_URL, { fetchWithAuth } from '../../config/api';
 import { toast } from 'react-hot-toast';
@@ -6,7 +7,7 @@ import {
   LayoutDashboard, FileText, Building2, Clock, BookOpen,
   TrendingUp, Bell, Star, CheckCircle2, XCircle, AlertCircle,
   Plus, Send, ChevronRight, Award, Search, MapPin, Briefcase, Users, Save,
-  Eye, EyeOff, Lock, Unlock, Copy, Check
+  Eye, EyeOff, Lock, Unlock, Copy, Check, Upload
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -62,6 +63,12 @@ export default function StudentDashboard({ activePage, setActivePage }) {
 
   const [showDTRModal, setShowDTRModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [applyTargetCompany, setApplyTargetCompany] = useState(null);
+  const [applyFiles, setApplyFiles] = useState([]);
+  const [applyNote, setApplyNote] = useState('');
+  const [applyError, setApplyError] = useState('');
+  const [applySubmitting, setApplySubmitting] = useState(false);
   
   const [dtrForm, setDtrForm] = useState({ date: '', time_in: '08:00', time_out: '17:00' });
   const [reportForm, setReportForm] = useState({ week: '', narrative: '' });
@@ -89,7 +96,7 @@ export default function StudentDashboard({ activePage, setActivePage }) {
           fetchWithAuth(`${API_BASE_URL}/student/dashboard`),
           fetchWithAuth(`${API_BASE_URL}/companies`),
           fetchWithAuth(`${API_BASE_URL}/student/requirements?student_id=${studentId}`),
-          fetchWithAuth(`${API_BASE_URL}/student/placements?student_id=${studentId}`),
+          fetchWithAuth(`${API_BASE_URL}/student/applications?student_id=${studentId}`),
           fetchWithAuth(`${API_BASE_URL}/admin/announcements`),
           fetchWithAuth(`${API_BASE_URL}/student/weekly-reports?student_id=${studentId}`),
           fetchWithAuth(`${API_BASE_URL}/admin/notifications?user_id=${currentUser.user_id}`),
@@ -220,29 +227,54 @@ export default function StudentDashboard({ activePage, setActivePage }) {
     }
   };
 
-  const applyCompany = async (company_id) => {
+  const openApplyModal = (company) => {
+    setApplyTargetCompany(company);
+    setApplyFiles([]);
+    setApplyNote('');
+    setApplyError('');
+    setShowApplyModal(true);
+  };
+
+  const submitApplication = async () => {
+    setApplyError('');
+    if (applyFiles.length === 0) {
+      setApplyError('Please attach at least one document before submitting.');
+      return;
+    }
+    setApplySubmitting(true);
     try {
+      const formData = new FormData();
+      formData.append('student_id', student?.student_id);
+      formData.append('company_id', applyTargetCompany.company_id);
+      if (applyNote) formData.append('note', applyNote);
+      applyFiles.forEach(f => formData.append('documents', f));
+
       const res = await fetchWithAuth(`${API_BASE_URL}/student/apply`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ student_id: student?.student_id, company_id })
+        body: formData
       });
       const data = await res.json();
       if (data.success) {
         setApplications([...applications, {
-          application_id: applications.length + 1,
+          application_id: data.data?.application_id || Date.now(),
           student_id: student?.student_id,
-          company_id,
+          company_id: applyTargetCompany.company_id,
           status: 'pending',
-          applied_at: new Date().toISOString()
+          applied_at: new Date().toISOString(),
+          documents: applyFiles.map(f => ({ name: f.name, size: f.size }))
         }]);
+        setShowApplyModal(false);
+        setApplyTargetCompany(null);
+        setApplyFiles([]);
+        setApplyNote('');
         toast.success('Application submitted successfully!');
       } else {
-        toast.error(data.message || 'Failed to apply');
+        setApplyError(data.message || 'Failed to submit application.');
       }
-    } catch (error) {
-      toast.error('Server error while applying to company');
+    } catch (err) {
+      setApplyError('Server error. Please try again.');
     }
+    setApplySubmitting(false);
   };
 
   const submitRequirement = async (req_id) => {
@@ -284,10 +316,10 @@ export default function StudentDashboard({ activePage, setActivePage }) {
   }
 
   const pages = {
-    dashboard: <DashboardView student={student} placement={placement} company={company} hoursRendered={hoursRendered} notifications={notifications} unreadNotifs={unreadNotifs} evaluations={evaluations} announcements={announcements} />,
+    dashboard: <DashboardView student={student} placement={placement} company={company} hoursRendered={hoursRendered} notifications={notifications} unreadNotifs={unreadNotifs} evaluations={evaluations} announcements={announcements} applications={applications} companies={companies} />,
     profile: <ProfileView student={student} currentUser={currentUser} setStudent={setStudent} />,
     requirements: <RequirementsView reqChecklist={requirements} onSubmit={submitRequirement} />,
-    companies: <CompaniesView companies={companies} applications={applications} onApply={applyCompany} student={student} />,
+    companies: <CompaniesView companies={companies} applications={applications} onApply={openApplyModal} student={student} />,
     attendance: <AttendanceView attendance={attendance} hoursRendered={hoursRendered} required={student.required_hours} onAddDTR={() => setShowDTRModal(true)} />,
     reports: <ReportsView reports={reports} onAdd={() => setShowReportModal(true)} />,
     progress: <ProgressView placement={placement} hoursRendered={hoursRendered} evaluations={evaluations} company={company} />
@@ -296,8 +328,8 @@ export default function StudentDashboard({ activePage, setActivePage }) {
   return (
     <>
       {/* DTR Modal */}
-      {showDTRModal && (
-        <div className="modal-overlay" onClick={() => setShowDTRModal(false)}>
+      {showDTRModal && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 99999 }} onClick={() => setShowDTRModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Log Daily Time Record</h2>
@@ -326,12 +358,13 @@ export default function StudentDashboard({ activePage, setActivePage }) {
               <Save size={16} /> Save DTR Record
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Weekly Report Modal */}
-      {showReportModal && (
-        <div className="modal-overlay" onClick={() => setShowReportModal(false)}>
+      {showReportModal && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 99999 }} onClick={() => setShowReportModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Submit Weekly Narrative Report</h2>
@@ -354,7 +387,140 @@ export default function StudentDashboard({ activePage, setActivePage }) {
               <FileText size={16} /> Submit Report
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Apply to Company Modal */}
+      {showApplyModal && applyTargetCompany && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 99999 }} onClick={() => setShowApplyModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '560px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '42px', height: '42px', borderRadius: '10px', flexShrink: 0,
+                  background: applyTargetCompany.photo_url
+                    ? `url(${API_BASE_URL.replace('/api', '') + applyTargetCompany.photo_url}) center/cover no-repeat`
+                    : 'var(--color-bg-elevated)',
+                  border: '1px solid var(--color-border)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  {!applyTargetCompany.photo_url && <Building2 size={20} color="var(--text-muted)" />}
+                </div>
+                <div>
+                  <h2 className="modal-title" style={{ margin: 0, fontSize: '1.08rem' }}>Apply to {applyTargetCompany.company_name}</h2>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{applyTargetCompany.industry}</div>
+                </div>
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowApplyModal(false)}>✕</button>
+            </div>
+
+            {/* Company Requirements Info */}
+            <div style={{
+              padding: '14px 16px',
+              background: 'rgba(56,189,248,0.07)',
+              border: '1px solid rgba(56,189,248,0.22)',
+              borderRadius: '12px',
+              marginBottom: '18px'
+            }}>
+              <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#38bdf8', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <FileText size={15} /> Required Documents for {applyTargetCompany.company_name}:
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                {(applyTargetCompany.requirements
+                  ? applyTargetCompany.requirements.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean)
+                  : ['MOA (Memorandum of Agreement)', 'Resume / Curriculum Vitae', 'Application / Endorsement Letter', 'Medical Certificate']
+                ).map((req, idx) => (
+                  <span key={idx} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '5px',
+                    padding: '4px 10px', borderRadius: '6px',
+                    background: 'rgba(56,189,248,0.12)', border: '1px solid rgba(56,189,248,0.25)',
+                    fontSize: '0.78rem', color: '#e0f2fe', fontWeight: 600
+                  }}>
+                    <CheckCircle2 size={12} color="#38bdf8" /> {req}
+                  </span>
+                ))}
+              </div>
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                Please upload scanned copies (PDF or Image) of the required files before submitting your application.
+              </div>
+            </div>
+
+            {/* File Upload */}
+            <div className="form-group">
+              <label className="form-label">Attach Required Documents <span style={{ color: 'var(--status-rejected)' }}>*</span></label>
+              <div
+                style={{ border: '2px dashed var(--color-border)', borderRadius: '12px', padding: '24px', textAlign: 'center', cursor: 'pointer', transition: 'border-color 0.2s, background 0.2s' }}
+                onClick={() => document.getElementById('apply-file-input').click()}
+                onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--primary-color)'; e.currentTarget.style.background = 'rgba(56,189,248,0.04)'; }}
+                onDragLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.background = 'transparent'; }}
+                onDrop={e => {
+                  e.preventDefault();
+                  e.currentTarget.style.borderColor = 'var(--color-border)';
+                  e.currentTarget.style.background = 'transparent';
+                  setApplyFiles(prev => [...prev, ...Array.from(e.dataTransfer.files)]);
+                }}
+              >
+                <input
+                  type="file"
+                  id="apply-file-input"
+                  multiple
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  hidden
+                  onChange={e => setApplyFiles(prev => [...prev, ...Array.from(e.target.files)])}
+                />
+                <Upload size={28} color="var(--text-muted)" />
+                <div style={{ marginTop: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Click to browse or drag files here</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '3px' }}>Supported: PDF, DOC, DOCX, JPG, PNG</div>
+              </div>
+              {applyFiles.length > 0 && (
+                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {applyFiles.map((f, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--color-bg-elevated)', borderRadius: '8px', fontSize: '0.82rem', border: '1px solid var(--color-border)' }}>
+                      <FileText size={13} color="var(--text-accent)" />
+                      <span style={{ flex: 1, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>{(f.size / 1024).toFixed(1)} KB</span>
+                      <button
+                        onClick={() => setApplyFiles(applyFiles.filter((_, idx) => idx !== i))}
+                        style={{ background: 'none', border: 'none', color: 'var(--status-rejected)', cursor: 'pointer', display: 'flex', padding: 0 }}
+                      >
+                        <XCircle size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Optional Note */}
+            <div className="form-group">
+              <label className="form-label">Message / Note <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(Optional)</span></label>
+              <textarea
+                className="form-textarea"
+                placeholder="Introduce yourself or add any relevant notes for the coordinator..."
+                value={applyNote}
+                onChange={e => setApplyNote(e.target.value)}
+                style={{ minHeight: '80px' }}
+              />
+            </div>
+
+            {applyError && (
+              <div style={{ padding: '10px', background: 'rgba(244,63,94,0.1)', color: 'var(--status-rejected)', borderRadius: '8px', marginBottom: '12px', fontSize: '0.85rem' }}>
+                {applyError}
+              </div>
+            )}
+
+            <button
+              className="btn btn-primary w-full"
+              style={{ justifyContent: 'center' }}
+              onClick={submitApplication}
+              disabled={applySubmitting || applyFiles.length === 0}
+            >
+              {applySubmitting ? 'Submitting...' : <><Send size={15} /> Submit Application</>}
+            </button>
+          </div>
+        </div>,
+        document.body
       )}
 
       <div className="page">
@@ -366,7 +532,7 @@ export default function StudentDashboard({ activePage, setActivePage }) {
 
 // --- Sub-views ---
 
-function DashboardView({ student, placement, company, hoursRendered, notifications, unreadNotifs, evaluations, announcements }) {
+function DashboardView({ student, placement, company, hoursRendered, notifications, unreadNotifs, evaluations, announcements, applications, companies }) {
   const latestEval = evaluations[evaluations.length - 1];
   const progress = placement && student?.required_hours ? Math.min(Math.round((hoursRendered / student.required_hours) * 100), 100) : 0;
   
@@ -477,6 +643,80 @@ function DashboardView({ student, placement, company, hoursRendered, notificatio
               ))
             )}
           </div>
+        </motion.div>
+
+        {/* My Applications */}
+        <motion.div className="bento-card col-span-12" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}>
+          <div className="card-header">
+            <div className="card-title">My Company Applications</div>
+            {applications.length > 0 && (
+              <span className="badge badge-pending">{applications.length} application{applications.length !== 1 ? 's' : ''}</span>
+            )}
+          </div>
+          {applications.length === 0 ? (
+            <div className="empty-state"><p>You have not applied to any company yet.</p></div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
+              {applications.map(app => {
+                const comp = companies.find(c => c.company_id === app.company_id);
+                if (!comp) return null;
+                const statusColor =
+                  app.status === 'approved' || app.status === 'accepted' ? 'var(--status-approved)' :
+                  app.status === 'rejected' || app.status === 'terminated' ? 'var(--status-rejected)' :
+                  'var(--status-pending)';
+                const statusBg =
+                  app.status === 'approved' || app.status === 'accepted' ? 'rgba(34,197,94,0.08)' :
+                  app.status === 'rejected' || app.status === 'terminated' ? 'rgba(244,63,94,0.08)' :
+                  'rgba(251,191,36,0.08)';
+                return (
+                  <div key={app.application_id} style={{
+                    background: statusBg,
+                    border: `1px solid ${statusColor}33`,
+                    borderRadius: '14px',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    transition: 'transform 0.15s'
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                          width: '40px', height: '40px', borderRadius: '10px',
+                          background: `url(${comp.photo_url ? API_BASE_URL.replace('/api', '') + comp.photo_url : ''}) center/cover no-repeat`,
+                          backgroundColor: 'var(--color-bg-elevated)',
+                          border: '1px solid var(--color-border)',
+                          flexShrink: 0
+                        }} />
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-primary)', lineHeight: 1.2 }}>{comp.company_name}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>{comp.industry}</div>
+                        </div>
+                      </div>
+                      <StatusBadge status={app.status} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      {comp.address && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <MapPin size={12} />
+                          <span>{comp.address}</span>
+                        </div>
+                      )}
+                      {app.applied_at && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <Clock size={12} />
+                          <span>Applied: {new Date(app.applied_at).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </motion.div>
       </div>
     </>
@@ -622,9 +862,12 @@ function CompaniesView({ companies, applications, onApply, student }) {
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                   <div>Contact: <span style={{ color: 'var(--text-secondary)' }}>{c.contact_person}</span></div>
                   <div>Email: <span style={{ color: 'var(--text-accent)' }}>{c.email}</span></div>
-                  {c.requirements && (
-                    <div style={{ marginTop: '4px' }}>Requirements: <span style={{ color: 'var(--text-secondary)' }}>{c.requirements}</span></div>
-                  )}
+                  <div style={{ marginTop: '5px', lineHeight: 1.4 }}>
+                    <span style={{ fontWeight: 600, color: '#38bdf8' }}>Requirements: </span>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      {c.requirements || 'MOA, Resume, Application Letter, Medical Certificate'}
+                    </span>
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
@@ -644,7 +887,7 @@ function CompaniesView({ companies, applications, onApply, student }) {
                       <AlertCircle size={12} /> Not Available
                     </button>
                   ) : (
-                    <button className="btn btn-primary btn-sm" onClick={() => onApply(c.company_id)}>
+                    <button className="btn btn-primary btn-sm" onClick={() => onApply(c)}>
                       Apply <ChevronRight size={13} />
                     </button>
                   )}

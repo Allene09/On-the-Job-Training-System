@@ -55,11 +55,53 @@ END$$
 
 CREATE PROCEDURE sp_ApplyToCompany(
     IN p_student_id INT,
-    IN p_company_id INT
+    IN p_company_id INT,
+    IN p_note TEXT
 )
 BEGIN
-    INSERT INTO applications (student_id, company_id, status)
-    VALUES (p_student_id, p_company_id, 'pending');
+    INSERT INTO applications (student_id, company_id, note, status)
+    VALUES (p_student_id, p_company_id, p_note, 'pending');
+
+    SELECT LAST_INSERT_ID() AS application_id;
+END$$
+
+CREATE PROCEDURE sp_AddApplicationDocument(
+    IN p_application_id INT,
+    IN p_file_name VARCHAR(255),
+    IN p_file_path VARCHAR(255),
+    IN p_file_size INT
+)
+BEGIN
+    INSERT INTO application_documents (application_id, file_name, file_path, file_size)
+    VALUES (p_application_id, p_file_name, p_file_path, p_file_size);
+END$$
+
+CREATE PROCEDURE sp_GetApplicationDocuments(
+    IN p_application_id INT
+)
+BEGIN
+    SELECT * FROM application_documents WHERE application_id = p_application_id;
+END$$
+
+CREATE PROCEDURE sp_GetApplicationsByStudentId(
+    IN p_student_id INT
+)
+BEGIN
+    SELECT a.*, c.company_name, c.industry, c.photo_url, c.address
+    FROM applications a
+    JOIN companies c ON a.company_id = c.company_id
+    WHERE a.student_id = p_student_id
+    ORDER BY a.applied_at DESC;
+END$$
+
+CREATE PROCEDURE sp_GetAllApplications()
+BEGIN
+    SELECT a.*, s.full_name as student_name, s.course, s.year_level, s.student_number,
+           c.company_name, c.industry, c.photo_url, c.address
+    FROM applications a
+    JOIN students s ON a.student_id = s.student_id
+    JOIN companies c ON a.company_id = c.company_id
+    ORDER BY a.applied_at DESC;
 END$$
 
 CREATE PROCEDURE sp_ApproveApplication(

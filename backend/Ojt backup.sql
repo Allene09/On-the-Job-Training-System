@@ -62,6 +62,7 @@ CREATE TABLE `applications` (
   `application_id` int(11) NOT NULL AUTO_INCREMENT,
   `student_id` int(11) NOT NULL,
   `company_id` int(11) NOT NULL,
+  `note` text DEFAULT NULL,
   `status` enum('pending','accepted','rejected') DEFAULT 'pending',
   `applied_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `approved_by` int(11) DEFAULT NULL,
@@ -77,7 +78,23 @@ CREATE TABLE `applications` (
 
 /*Data for the table `applications` */
 
-insert  into `applications`(`application_id`,`student_id`,`company_id`,`status`,`applied_at`,`approved_by`,`approved_at`) values (2,10,1,'pending','2026-08-05 21:22:10',NULL,NULL);
+insert  into `applications`(`application_id`,`student_id`,`company_id`,`note`,`status`,`applied_at`,`approved_by`,`approved_at`) values (2,10,1,NULL,'pending','2026-08-05 21:22:10',NULL,NULL);
+
+/*Table structure for table `application_documents` */
+
+DROP TABLE IF EXISTS `application_documents`;
+
+CREATE TABLE `application_documents` (
+  `document_id` int(11) NOT NULL AUTO_INCREMENT,
+  `application_id` int(11) NOT NULL,
+  `file_name` varchar(255) NOT NULL,
+  `file_path` varchar(255) NOT NULL,
+  `file_size` int(11) DEFAULT NULL,
+  `uploaded_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`document_id`),
+  KEY `application_id` (`application_id`),
+  CONSTRAINT `application_documents_ibfk_1` FOREIGN KEY (`application_id`) REFERENCES `applications` (`application_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 /*Table structure for table `attendance` */
 
@@ -356,15 +373,64 @@ DELIMITER $$
 
 /*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_ApplyToCompany`(
           IN p_student_id INT,
-          IN p_company_id INT
+          IN p_company_id INT,
+          IN p_note TEXT
       )
 BEGIN
-          INSERT INTO applications (student_id, company_id, status)
-          VALUES (p_student_id, p_company_id, 'pending');
-          
-          UPDATE companies 
-          SET slots_available = slots_available - 1 
-          WHERE company_id = p_company_id AND slots_available > 0;
+          INSERT INTO applications (student_id, company_id, note, status)
+          VALUES (p_student_id, p_company_id, p_note, 'pending');
+
+          SELECT LAST_INSERT_ID() AS application_id;
+      END */$$
+DELIMITER ;
+
+/* Procedure structure for procedure `sp_AddApplicationDocument` */
+
+/*!50003 DROP PROCEDURE IF EXISTS  `sp_AddApplicationDocument` */;
+
+DELIMITER $$
+
+/*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_AddApplicationDocument`(
+          IN p_application_id INT,
+          IN p_file_name VARCHAR(255),
+          IN p_file_path VARCHAR(255),
+          IN p_file_size INT
+      )
+BEGIN
+          INSERT INTO application_documents (application_id, file_name, file_path, file_size)
+          VALUES (p_application_id, p_file_name, p_file_path, p_file_size);
+      END */$$
+DELIMITER ;
+
+/* Procedure structure for procedure `sp_GetApplicationDocuments` */
+
+/*!50003 DROP PROCEDURE IF EXISTS  `sp_GetApplicationDocuments` */;
+
+DELIMITER $$
+
+/*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_GetApplicationDocuments`(
+          IN p_application_id INT
+      )
+BEGIN
+          SELECT * FROM application_documents WHERE application_id = p_application_id;
+      END */$$
+DELIMITER ;
+
+/* Procedure structure for procedure `sp_GetApplicationsByStudentId` */
+
+/*!50003 DROP PROCEDURE IF EXISTS  `sp_GetApplicationsByStudentId` */;
+
+DELIMITER $$
+
+/*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_GetApplicationsByStudentId`(
+          IN p_student_id INT
+      )
+BEGIN
+          SELECT a.*, c.company_name, c.industry, c.photo_url, c.address
+          FROM applications a
+          JOIN companies c ON a.company_id = c.company_id
+          WHERE a.student_id = p_student_id
+          ORDER BY a.applied_at DESC;
       END */$$
 DELIMITER ;
 
@@ -539,7 +605,8 @@ DELIMITER $$
 
 /*!50003 CREATE DEFINER=`Ojt_Db`@`localhost` PROCEDURE `sp_GetAllApplications`()
 BEGIN
-    SELECT a.*, s.full_name, s.course, s.year_level, s.student_number, c.company_name
+    SELECT a.*, s.full_name as student_name, s.course, s.year_level, s.student_number,
+           c.company_name, c.industry, c.photo_url, c.address
     FROM applications a
     JOIN students s ON a.student_id = s.student_id
     JOIN companies c ON a.company_id = c.company_id

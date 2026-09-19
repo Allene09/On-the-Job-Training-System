@@ -105,6 +105,7 @@ CREATE TABLE applications (
     application_id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,
     company_id INT NOT NULL,
+    note TEXT,
     status ENUM('pending','accepted','rejected') DEFAULT 'pending',
     applied_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     approved_by INT,
@@ -115,6 +116,17 @@ CREATE TABLE applications (
     CONSTRAINT applications_ibfk_1 FOREIGN KEY (student_id) REFERENCES students (student_id) ON DELETE CASCADE,
     CONSTRAINT applications_ibfk_2 FOREIGN KEY (company_id) REFERENCES companies (company_id) ON DELETE CASCADE,
     CONSTRAINT applications_ibfk_3 FOREIGN KEY (approved_by) REFERENCES users (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+CREATE TABLE application_documents (
+    document_id INT AUTO_INCREMENT PRIMARY KEY,
+    application_id INT NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(255) NOT NULL,
+    file_size INT DEFAULT NULL,
+    uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    KEY application_id (application_id),
+    CONSTRAINT application_documents_ibfk_1 FOREIGN KEY (application_id) REFERENCES applications (application_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 CREATE TABLE ojt_placements (

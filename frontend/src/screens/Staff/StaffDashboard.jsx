@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import {
   LayoutDashboard, Users, FileCheck, Briefcase, ClipboardList,
   Star, CheckCircle2, XCircle, AlertCircle, Bell, Clock, TrendingUp, Building2, Eye, EyeOff,
-  Lock, Shield, Copy, Check
+  Lock, Shield, Copy, Check, MapPin, Search, FileText
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -218,7 +218,7 @@ export default function StaffDashboard({ activePage, currentUser }) {
     dashboard: <StaffOverview pendingSubmissions={pendingSubmissions} pendingApps={pendingApps} evaluations={evaluations} announcements={announcements} notifications={notifications} />,
     profiling: <StudentProfilingView />,
     requirements: <ReviewRequirementsView enrichedSubmissions={submissions} onReview={reviewRequirement} filter={reqFilter} setFilter={setReqFilter} />,
-    applications: <ApplicationsView enrichedApps={applications} onApprove={approveApplication} onReject={rejectApplication} />,
+    applications: <ApplicationsView enrichedApps={applications} companies={companies} onApprove={approveApplication} onReject={rejectApplication} />,
     attendance: <AttendanceMonitorView placements={placements} students={students} companies={companies} attendance={attendance} />,
     evaluations: <EvaluationsView evaluations={evaluations} placements={placements} students={students} onAddEval={() => setShowEvalModal(true)} />,
     profile: <StaffProfileView currentUser={currentUser} />
@@ -378,37 +378,238 @@ function ReviewRequirementsView({ enrichedSubmissions, onReview, filter, setFilt
   );
 }
 
-function ApplicationsView({ enrichedApps, onApprove, onReject }) {
+function ApplicationsView({ enrichedApps, companies, onApprove, onReject }) {
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+
+  const counts = {
+    all: enrichedApps.length,
+    pending: enrichedApps.filter(a => a.status === 'pending').length,
+    accepted: enrichedApps.filter(a => a.status === 'accepted').length,
+    rejected: enrichedApps.filter(a => a.status === 'rejected').length,
+  };
+
+  const visible = enrichedApps
+    .filter(a => filter === 'all' || a.status === filter)
+    .filter(a =>
+      !search ||
+      a.student_name?.toLowerCase().includes(search.toLowerCase()) ||
+      a.company_name?.toLowerCase().includes(search.toLowerCase()) ||
+      a.course?.toLowerCase().includes(search.toLowerCase())
+    );
+
+  const tabColors = { pending: 'var(--status-pending)', accepted: 'var(--status-approved)', rejected: 'var(--status-rejected)' };
+
   return (
     <>
-      <div className="page-header"><h1>Company Applications</h1><p>Review and approve student company placement applications</p></div>
-      <div className="card">
-        <div className="table-wrapper">
-          <table>
-            <thead><tr><th>Student</th><th>Course</th><th>Company</th><th>Industry</th><th>Applied</th><th>Status</th><th>Action</th></tr></thead>
-            <tbody>
-              {enrichedApps.map(a => (
-                <tr key={a.application_id}>
-                  <td style={{ fontWeight: 600 }}>{a.student_name}</td>
-                  <td style={{ color: 'var(--text-muted)' }}>{a.course}</td>
-                  <td>{a.company_name}</td>
-                  <td style={{ color: 'var(--text-muted)' }}>{a.industry}</td>
-                  <td style={{ color: 'var(--text-muted)' }}>{new Date(a.applied_at).toLocaleDateString()}</td>
-                  <td><StatusBadge status={a.status} /></td>
-                  <td>
-                    {a.status === 'pending' ? (
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button className="btn btn-success btn-xs" onClick={() => onApprove(a.application_id)}><CheckCircle2 size={12} /> Accept</button>
-                        <button className="btn btn-danger btn-xs" onClick={() => onReject(a.application_id)}><XCircle size={12} /> Reject</button>
-                      </div>
-                    ) : <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>—</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="page-header">
+        <h1>Company Applications</h1>
+        <p>Review and approve student company placement applications</p>
+      </div>
+
+      {/* Filter Tabs */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {['all', 'pending', 'accepted', 'rejected'].map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              style={{
+                padding: '7px 16px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: 600,
+                border: `1.5px solid ${filter === f ? (tabColors[f] || 'var(--primary-color)') : 'var(--color-border)'}`,
+                background: filter === f ? `${tabColors[f] || 'var(--primary-color)'}18` : 'transparent',
+                color: filter === f ? (tabColors[f] || 'var(--primary-color)') : 'var(--text-muted)',
+                cursor: 'pointer', transition: 'all 0.18s', display: 'flex', alignItems: 'center', gap: '6px'
+              }}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+              <span style={{
+                background: filter === f ? (tabColors[f] || 'var(--primary-color)') : 'var(--color-bg-elevated)',
+                color: filter === f ? '#fff' : 'var(--text-muted)',
+                borderRadius: '10px', padding: '1px 7px', fontSize: '0.72rem', fontWeight: 700
+              }}>{counts[f]}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div style={{ position: 'relative', minWidth: '240px' }}>
+          <Search size={14} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+          <input
+            type="text"
+            placeholder="Search student or company..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              width: '100%', padding: '8px 12px 8px 32px',
+              background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)',
+              borderRadius: '10px', color: 'var(--text-primary)', fontSize: '0.83rem', outline: 'none'
+            }}
+          />
+          {search && (
+            <button onClick={() => setSearch('')} style={{ position: 'absolute', right: '9px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.85rem' }}>✕</button>
+          )}
         </div>
       </div>
+
+      {/* Cards Grid */}
+      {visible.length === 0 ? (
+        <div className="card empty-state"><p>No applications found.</p></div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '16px' }}>
+          {visible.map(a => {
+            const comp = companies?.find(c => c.company_id === a.company_id);
+            const logoUrl = comp?.photo_url ? API_BASE_URL.replace('/api', '') + comp.photo_url : null;
+            const statusColor =
+              a.status === 'accepted' ? 'var(--status-approved)' :
+              a.status === 'rejected' ? 'var(--status-rejected)' :
+              'var(--status-pending)';
+            const statusBg =
+              a.status === 'accepted' ? 'rgba(34,197,94,0.06)' :
+              a.status === 'rejected' ? 'rgba(244,63,94,0.06)' :
+              'rgba(251,191,36,0.06)';
+
+            return (
+              <motion.div
+                key={a.application_id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                  background: 'var(--color-bg-surface)',
+                  border: `1px solid ${statusColor}33`,
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  transition: 'transform 0.15s, box-shadow 0.15s'
+                }}
+                whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(0,0,0,0.18)' }}
+              >
+                {/* Company banner + logo */}
+                <div style={{ position: 'relative', height: '80px', background: statusBg, borderBottom: `1px solid ${statusColor}22` }}>
+                  {logoUrl ? (
+                    <img src={logoUrl} alt={a.company_name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.25 }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, var(--color-bg-elevated), var(--color-bg-surface))' }} />
+                  )}
+                  {/* Logo circle */}
+                  <div style={{
+                    position: 'absolute', bottom: '-22px', left: '20px',
+                    width: '48px', height: '48px', borderRadius: '12px',
+                    border: '2.5px solid var(--color-bg-surface)',
+                    background: logoUrl ? `url(${logoUrl}) center/cover no-repeat` : 'var(--color-bg-elevated)',
+                    backgroundColor: 'var(--color-bg-elevated)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                    overflow: 'hidden'
+                  }}>
+                    {!logoUrl && <Building2 size={22} color="var(--text-muted)" />}
+                  </div>
+                  {/* Status badge top-right */}
+                  <div style={{ position: 'absolute', top: '10px', right: '12px' }}>
+                    <StatusBadge status={a.status} />
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div style={{ padding: '30px 18px 18px 18px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                  {/* Company info */}
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', lineHeight: 1.2 }}>{a.company_name}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                      <Briefcase size={11} /><span>{a.industry}</span>
+                      {comp?.address && <><span>·</span><MapPin size={11} /><span>{comp.address}</span></>}
+                    </div>
+                  </div>
+
+                  <div style={{ height: '1px', background: 'var(--color-border)' }} />
+
+                  {/* Attached Documents */}
+                  <div style={{ padding: '8px 10px', background: 'var(--color-bg-elevated)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: a.documents?.length ? '6px' : 0 }}>
+                      <FileText size={11} />
+                      {a.documents?.length
+                        ? `${a.documents.length} document${a.documents.length !== 1 ? 's' : ''} attached`
+                        : 'No documents attached'}
+                    </div>
+                    {a.documents?.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {a.documents.map((doc, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem' }}>
+                            <FileCheck size={11} color="var(--text-accent)" />
+                            {doc.file_path ? (
+                              <a
+                                href={API_BASE_URL.replace('/api', '') + doc.file_path}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: 'var(--text-accent)', textDecoration: 'none' }}
+                              >
+                                {doc.name || doc.original_name || doc.file_path.split('/').pop()}
+                              </a>
+                            ) : (
+                              <span style={{ color: 'var(--text-secondary)' }}>{doc.name}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Student info */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
+                      background: 'linear-gradient(135deg, var(--primary-color), #0ea5e9)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 700, fontSize: '0.95rem', color: '#fff'
+                    }}>
+                      {a.student_name?.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)' }}>{a.student_name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{a.course}</div>
+                    </div>
+                    <div style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'right' }}>
+                      <Clock size={11} style={{ display: 'inline', marginRight: 3 }} />
+                      {new Date(a.applied_at).toLocaleDateString()}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  {a.status === 'pending' && (
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                      <button
+                        className="btn btn-success btn-sm"
+                        style={{ flex: 1, justifyContent: 'center' }}
+                        onClick={() => onApprove(a.application_id)}
+                      >
+                        <CheckCircle2 size={14} /> Accept
+                      </button>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        style={{ flex: 1, justifyContent: 'center' }}
+                        onClick={() => onReject(a.application_id)}
+                      >
+                        <XCircle size={14} /> Reject
+                      </button>
+                    </div>
+                  )}
+                  {a.status === 'accepted' && (
+                    <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(34,197,94,0.08)', fontSize: '0.78rem', color: 'var(--status-approved)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <CheckCircle2 size={13} /> Application accepted
+                    </div>
+                  )}
+                  {a.status === 'rejected' && (
+                    <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(244,63,94,0.08)', fontSize: '0.78rem', color: 'var(--status-rejected)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <XCircle size={13} /> Application rejected
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 }
