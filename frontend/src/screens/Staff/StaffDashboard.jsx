@@ -41,9 +41,9 @@ export default function StaffDashboard({ activePage, currentUser }) {
 
   useEffect(() => {
     let isMounted = true;
-    const loadData = async () => {
+    const loadData = async (silent = false) => {
       try {
-        setLoading(true);
+        if (!silent) setLoading(true);
         const [fullDataRes, annRes, notifRes] = await Promise.all([
           fetchWithAuth(`${API_BASE_URL}/staff/full-data`),
           fetchWithAuth(`${API_BASE_URL}/admin/announcements`),
