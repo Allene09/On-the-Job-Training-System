@@ -6,9 +6,10 @@ import LoginScreen from './screens/LoginScreen';
 import StudentDashboard from './screens/Student/StudentDashboard';
 import StaffDashboard from './screens/Staff/StaffDashboard';
 import AdminDashboard from './screens/Admin/AdminDashboard';
+import { toast } from 'react-hot-toast';
 import {
   LayoutDashboard, Users, Building2, Calendar, FileText,
-  Settings, LogOut, Menu, X, Bell, ChevronRight, Activity, Database
+  Settings, LogOut, Menu, X, Bell, ChevronRight, Activity, Database, RotateCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -206,7 +207,17 @@ function AppShell() {
             <span className="topbar-title">{PAGE_TITLES[activePage] || 'Dashboard'}</span>
           </div>
 
-          <div className="topbar-actions">
+          <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              className="notif-btn"
+              title="Sync Live Data"
+              onClick={() => {
+                window.dispatchEvent(new Event('focus'));
+                toast.success('Syncing live data...');
+              }}
+            >
+              <RotateCw size={17} />
+            </button>
             <button className="notif-btn" title="Notifications" onClick={() => setActivePage('dashboard')}>
               <Bell size={18} />
               {unreadNotifs.length > 0 && <span className="notif-badge" />}

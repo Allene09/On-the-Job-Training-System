@@ -110,8 +110,8 @@ class StaffModel {
     );
   }
 
-  static async rejectApplication(applicationId) {
-    await pool.query('CALL sp_RejectApplication(?)', [applicationId]);
+  static async rejectApplication(applicationId, remarks = 'Not qualified / Incomplete requirements') {
+    await pool.query('CALL sp_RejectApplication(?, ?)', [applicationId, remarks]);
   }
 }
 

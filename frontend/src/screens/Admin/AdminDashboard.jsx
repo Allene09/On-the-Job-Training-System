@@ -5,7 +5,7 @@ import API_BASE_URL, { fetchWithAuth } from '../../config/api';
 import {
   Users, Building2, FileText, BarChart3, Plus, Settings,
   TrendingUp, Clock, CheckCircle2, XCircle, Bell, Search, AlertCircle, Eye, EyeOff, X,
-  Copy, Check, Lock, Unlock, Shield, ShieldCheck, UserCheck, UserX
+  Copy, Check, Lock, Unlock, Shield, ShieldCheck, UserCheck, UserX, Calendar, RotateCw
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Line } from 'recharts';
@@ -88,9 +88,9 @@ export default function AdminDashboard({ activePage }) {
 
   useEffect(() => {
     let isMounted = true;
-    const fetchAdminData = async () => {
+    const fetchAdminData = async (silent = false) => {
       try {
-        setLoading(true);
+        if (!silent) setLoading(true);
         const [usersRes, compsRes, reqsRes, annRes, statsRes, placementsRes] = await Promise.all([
           fetchWithAuth(`${API_BASE_URL}/admin/users`),
           fetchWithAuth(`${API_BASE_URL}/companies`),
@@ -119,26 +119,39 @@ export default function AdminDashboard({ activePage }) {
         setAnnouncements(annData.data || []);
         setPlacements(placementsData.data || []);
         
-        // Since backend doesn't have an endpoint for all placements in admin, we mock the stats or fetch them if added.
-        // For now, let's use the provided stats from backend.
         setStats({
           total_users: allUsers.length,
           total_students: allUsers.filter(u => u.role === 'student').length,
           total_companies: (compsData.data || []).length,
           active_companies: (compsData.data || []).filter(c => c.status === 'active').length,
           ongoing_placements: statsData.data?.active_placements || 0,
-          completed_placements: 0, // Fallback if missing
-          total_hours: 0 // Fallback if missing
+          completed_placements: 0,
+          total_hours: 0
         });
       } catch (err) {
         console.error('Error fetching admin data:', err);
       } finally {
-        if (isMounted) setLoading(false);
+        if (!silent && isMounted) setLoading(false);
       }
     };
     
     fetchAdminData();
-    return () => { isMounted = false; };
+
+    // Auto-sync live data every 20 seconds
+    const syncInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchAdminData(true);
+      }
+    }, 20000);
+
+    const onFocus = () => fetchAdminData(true);
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      isMounted = false;
+      clearInterval(syncInterval);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   const uploadPhoto = async (file) => {
@@ -1284,7 +1297,12 @@ function ManageRequirementsView({ reqTypes, onAdd, setReqTypes }) {
 }
 
 function ReportsView({ stats, placements, students, companies }) {
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const now = new Date();
+  const currentMonthNum = now.getMonth() + 1;
+  const currentYearNum = now.getFullYear();
+
+  const [selectedYear, setSelectedYear] = useState(currentYearNum);
+  const [selectedMonth, setSelectedMonth] = useState(String(currentMonthNum));
   const [graphData, setGraphData] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -1305,32 +1323,148 @@ function ReportsView({ stats, placements, students, companies }) {
     fetchGraphData();
   }, [selectedYear]);
 
-  const currentY = new Date().getFullYear();
-  const years = Array.from({length: (currentY + 2) - 2024}, (_, i) => 2024 + i);
+  const years = Array.from({ length: (currentYearNum + 2) - 2024 }, (_, i) => 2024 + i);
+
+  const months = [
+    { value: 'all', label: 'All Months (Annual Overview)' },
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' }
+  ];
+
+  const selectedMonthData = selectedMonth === 'all'
+    ? null
+    : graphData.find(m => String(m.month_num) === String(selectedMonth));
+
+  const monthLabel = months.find(m => m.value === String(selectedMonth))?.label || 'Month';
+  const isCurrentMonth = String(selectedMonth) === String(currentMonthNum) && Number(selectedYear) === currentYearNum;
+
+  const filteredPlacements = selectedMonth === 'all'
+    ? placements
+    : placements.filter(p => {
+        if (!p.start_date) return true;
+        const d = new Date(p.start_date);
+        return (d.getMonth() + 1) === Number(selectedMonth) && d.getFullYear() === Number(selectedYear);
+      });
 
   return (
     <>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px' }}>
         <div>
           <h1>System Reports & Analytics</h1>
           <p>View overall OJT performance and completion analytics</p>
+          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 12px',
+              borderRadius: '999px',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              background: 'rgba(56,189,248,0.12)',
+              color: '#38bdf8',
+              border: '1px solid rgba(56,189,248,0.25)'
+            }}>
+              <Calendar size={13} />
+              {monthLabel.split(' ')[0]} {selectedYear}
+              {isCurrentMonth && ' (Current Month)'}
+            </span>
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Year:</span>
-          <select className="form-input" value={selectedYear} onChange={e => setSelectedYear(e.target.value)} style={{ padding: '6px 12px', width: 'auto' }}>
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Month:</span>
+            <select
+              className="form-input"
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(e.target.value)}
+              style={{ padding: '6px 12px', width: 'auto', minWidth: '150px' }}
+            >
+              {months.map(m => (
+                <option key={m.value} value={m.value}>
+                  {m.label} {String(m.value) === String(currentMonthNum) && Number(selectedYear) === currentYearNum ? '★ Current' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Year:</span>
+            <select
+              className="form-input"
+              value={selectedYear}
+              onChange={e => setSelectedYear(e.target.value)}
+              style={{ padding: '6px 12px', width: 'auto' }}
+            >
+              {years.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
         </div>
       </div>
+
       <div className="stat-grid">
-        <div className="stat-card cyan"><div className="stat-icon cyan"><BarChart3 size={20} /></div><div><div className="stat-value">{stats.total_students}</div><div className="stat-label">Total Students</div></div></div>
-        <div className="stat-card green"><div className="stat-icon green"><CheckCircle2 size={20} /></div><div><div className="stat-value">{stats.completed_placements}</div><div className="stat-label">OJT Completed</div></div></div>
-        <div className="stat-card purple"><div className="stat-icon purple"><TrendingUp size={20} /></div><div><div className="stat-value">{stats.ongoing_placements}</div><div className="stat-label">OJT Ongoing</div></div></div>
-        <div className="stat-card orange"><div className="stat-icon orange"><Clock size={20} /></div><div><div className="stat-value">{stats.total_hours}h</div><div className="stat-label">Total Hours Tracked</div></div></div>
+        <div className="stat-card cyan">
+          <div className="stat-icon cyan"><BarChart3 size={20} /></div>
+          <div>
+            <div className="stat-value">
+              {selectedMonth === 'all' ? stats.total_students : (selectedMonthData ? selectedMonthData.registrations : 0)}
+            </div>
+            <div className="stat-label">
+              {selectedMonth === 'all' ? 'Total Students' : `${monthLabel.split(' ')[0]} Registrations`}
+            </div>
+          </div>
+        </div>
+
+        <div className="stat-card green">
+          <div className="stat-icon green"><CheckCircle2 size={20} /></div>
+          <div>
+            <div className="stat-value">{stats.completed_placements}</div>
+            <div className="stat-label">OJT Completed</div>
+          </div>
+        </div>
+
+        <div className="stat-card purple">
+          <div className="stat-icon purple"><TrendingUp size={20} /></div>
+          <div>
+            <div className="stat-value">
+              {selectedMonth === 'all' ? stats.ongoing_placements : (selectedMonthData ? selectedMonthData.placements : 0)}
+            </div>
+            <div className="stat-label">
+              {selectedMonth === 'all' ? 'OJT Ongoing' : `${monthLabel.split(' ')[0]} Placements Started`}
+            </div>
+          </div>
+        </div>
+
+        <div className="stat-card orange">
+          <div className="stat-icon orange"><Clock size={20} /></div>
+          <div>
+            <div className="stat-value">
+              {selectedMonth === 'all' ? `${stats.total_hours}h` : `${selectedMonthData ? selectedMonthData.hours_tracked : 0}h`}
+            </div>
+            <div className="stat-label">
+              {selectedMonth === 'all' ? 'Total Hours Tracked' : `${monthLabel.split(' ')[0]} Hours Tracked`}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="card animate-fade-in-up delay-100" style={{ marginBottom: '24px' }}>
-        <div className="card-header"><div className="card-title">Monthly Activity Overview ({selectedYear})</div></div>
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="card-title">
+            Monthly Activity Overview ({selectedYear}) {selectedMonth !== 'all' ? `— Highlighting ${monthLabel.split(' ')[0]}` : ''}
+          </div>
+        </div>
         <div style={{ padding: '20px', height: '400px', width: '100%' }}>
           {loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-muted)' }}>Loading graph data...</div>
@@ -1370,12 +1504,26 @@ function ReportsView({ stats, placements, students, companies }) {
       </div>
 
       <div className="card animate-fade-in-up delay-200">
-        <div className="card-header"><div className="card-title">Placement Summary</div></div>
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="card-title">Placement Summary ({filteredPlacements.length})</div>
+          {selectedMonth !== 'all' && (
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Showing {monthLabel.split(' ')[0]} {selectedYear}
+            </span>
+          )}
+        </div>
         <div className="table-wrapper">
           <table>
             <thead><tr><th>Student</th><th>Course</th><th>Company</th><th>Hours Rendered</th><th>Required</th><th>Progress</th><th>Status</th></tr></thead>
             <tbody>
-              {placements.map(p => {
+              {filteredPlacements.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                    No placements recorded for this period.
+                  </td>
+                </tr>
+              ) : (
+                filteredPlacements.map(p => {
                 const s = students.find(st => st.student_id === p.student_id);
                 const c = companies.find(co => co.company_id === p.company_id);
                 const pct = Math.min(Math.round((p.total_hours_rendered / p.required_hours) * 100), 100);
@@ -1397,7 +1545,7 @@ function ReportsView({ stats, placements, students, companies }) {
                     <td><StatusBadge status={p.status} /></td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>

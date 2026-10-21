@@ -3,7 +3,8 @@ import API_BASE_URL from '../config/api';
 import {
   Building2, GraduationCap, Shield, TrendingUp,
   FileCheck, Clock, ArrowRight, CheckCircle2,
-  Search, MapPin, Briefcase, Users, AlertCircle
+  Search, MapPin, Briefcase, Users, AlertCircle,
+  Mail, Phone, MessageSquare
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -620,6 +621,194 @@ export default function LandingScreen({ onGetStarted }) {
             <TrendingUp size={80} color="#38bdf8" style={{ opacity: 0.8 }} />
           </div>
         </motion.div>
+      </section>
+
+      {/* ===== Contact & Support Section ===== */}
+      <section style={{ padding: '70px 40px', maxWidth: '1200px', margin: '0 auto' }}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          style={{ textAlign: 'center', marginBottom: '45px' }}
+        >
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '6px 16px',
+            borderRadius: '999px',
+            background: 'rgba(56,189,248,0.1)',
+            border: '1px solid rgba(56,189,248,0.25)',
+            color: '#38bdf8',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            marginBottom: '14px'
+          }}>
+            <MessageSquare size={14} /> Get in Touch
+          </div>
+          <h2 style={{ fontSize: '2.3rem', fontWeight: 800, marginBottom: '12px' }}>OJT Office & Support Contacts</h2>
+          <p style={{ color: 'var(--text-secondary)', maxWidth: '650px', margin: '0 auto', fontSize: '1rem', lineHeight: 1.6 }}>
+            Have questions regarding OJT guidelines, student endorsements, or partner company accreditation? Reach out to our dedicated internship coordinators.
+          </p>
+        </motion.div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
+          {/* Card 1: Office */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.05 }}
+            style={{
+              background: 'var(--color-bg-card)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '20px',
+              padding: '28px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+              boxShadow: 'var(--shadow-md)'
+            }}
+          >
+            <div style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '14px',
+              background: 'rgba(56,189,248,0.12)',
+              color: '#38bdf8',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Building2 size={24} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>OJT Placement Office</div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: '4px 0 6px 0', color: 'var(--text-primary)' }}>College of Computer Studies</h3>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                Bohol Island State University — Main Campus OJT Coordination & Industry Linkages Desk.
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Card 2: Email */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            style={{
+              background: 'var(--color-bg-card)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '20px',
+              padding: '28px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+              boxShadow: 'var(--shadow-md)'
+            }}
+          >
+            <div style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '14px',
+              background: 'rgba(168,85,247,0.12)',
+              color: '#a855f7',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Mail size={24} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#a855f7', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email Inquiries</div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: '4px 0 6px 0', color: 'var(--text-primary)' }}>ojt@bisu.edu.ph</h3>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                Alternate technical support: <br />
+                <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>support@ojtrack.bscs4b.com</span>
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Card 3: Phone */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.15 }}
+            style={{
+              background: 'var(--color-bg-card)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '20px',
+              padding: '28px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+              boxShadow: 'var(--shadow-md)'
+            }}
+          >
+            <div style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '14px',
+              background: 'rgba(34,197,94,0.12)',
+              color: '#22c55e',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Phone size={24} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phone & Hotline</div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: '4px 0 6px 0', color: 'var(--text-primary)' }}>(038) 501-0101</h3>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                Coordinator Mobile Desk: <br />
+                <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>+63 912 345 6789</span>
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Card 4: Location & Hours */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            style={{
+              background: 'var(--color-bg-card)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '20px',
+              padding: '28px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+              boxShadow: 'var(--shadow-md)'
+            }}
+          >
+            <div style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '14px',
+              background: 'rgba(251,191,36,0.12)',
+              color: '#fbbf24',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <MapPin size={24} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Location & Hours</div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: '4px 0 6px 0', color: 'var(--text-primary)' }}>CPG North Avenue, Tagbilaran</h3>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                Bohol, Philippines 6300 <br />
+                <span style={{ color: '#fbbf24', fontWeight: 500 }}>Mon – Fri: 8:00 AM – 5:00 PM</span>
+              </p>
+            </div>
+          </motion.div>
+        </div>
       </section>
 
       {/* Footer */}

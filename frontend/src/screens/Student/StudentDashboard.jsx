@@ -78,9 +78,9 @@ export default function StudentDashboard({ activePage, setActivePage }) {
 
   useEffect(() => {
     let isMounted = true;
-    const loadData = async () => {
+    const loadData = async (silent = false) => {
       try {
-        setLoading(true);
+        if (!silent) setLoading(true);
         const studentId = currentUser?.profile?.student_id || 1;
 
         const [
@@ -135,11 +135,26 @@ export default function StudentDashboard({ activePage, setActivePage }) {
       } catch (err) {
         console.error("Error loading student data:", err);
       } finally {
-        if (isMounted) setLoading(false);
+        if (!silent && isMounted) setLoading(false);
       }
     };
     loadData();
-    return () => { isMounted = false; };
+
+    // Auto-sync polling every 20 seconds
+    const syncInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadData(true);
+      }
+    }, 20000);
+
+    const onFocus = () => loadData(true);
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      isMounted = false;
+      clearInterval(syncInterval);
+      window.removeEventListener('focus', onFocus);
+    };
   }, [currentUser]);
 
   const unreadNotifs = notifications.filter(n => !n.is_read);
@@ -712,6 +727,29 @@ function DashboardView({ student, placement, company, hoursRendered, notificatio
                         </div>
                       )}
                     </div>
+                    {app.status === 'rejected' && (
+                      <div style={{
+                        marginTop: '4px',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        background: 'rgba(244,63,94,0.08)',
+                        border: '1px solid rgba(244,63,94,0.2)',
+                        color: 'var(--status-rejected)',
+                        fontSize: '0.76rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '3px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}>
+                          <XCircle size={12} /> Application Rejected
+                        </div>
+                        {app.remarks && (
+                          <div style={{ color: 'var(--text-secondary)', fontSize: '0.74rem', lineHeight: 1.3 }}>
+                            <strong>Feedback:</strong> {app.remarks}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}

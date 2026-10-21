@@ -135,8 +135,8 @@ exports.submitEvaluation = async (req, res) => {
 
 exports.rejectApplication = async (req, res) => {
   try {
-    const { application_id } = req.body;
-    await StaffModel.rejectApplication(application_id);
+    const { application_id, remarks } = req.body;
+    await StaffModel.rejectApplication(application_id, remarks || 'Not qualified / Incomplete requirements');
     return res.json({ success: true, message: 'Application rejected' });
   } catch (error) {
     console.error(error);

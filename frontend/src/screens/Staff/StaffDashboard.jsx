@@ -70,12 +70,76 @@ export default function StaffDashboard({ activePage, currentUser }) {
       } catch (err) {
         console.error("Error loading staff dashboard data:", err);
       } finally {
-        if (isMounted) setLoading(false);
+        if (!silent && isMounted) setLoading(false);
       }
     };
     loadData();
-    return () => { isMounted = false; };
+
+    // Auto-sync polling every 20 seconds
+    const syncInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadData(true);
+      }
+    }, 20000);
+
+    const onFocus = () => loadData(true);
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      isMounted = false;
+      clearInterval(syncInterval);
+      window.removeEventListener('focus', onFocus);
+    };
   }, [currentUser]);
+
+  const [rejectModal, setRejectModal] = useState({
+    isOpen: false,
+    applicationId: null,
+    studentName: '',
+    companyName: '',
+    selectedReason: 'Incomplete or missing required documents',
+    customRemarks: ''
+  });
+
+  const openRejectModal = (app) => {
+    const s = students.find(st => st.student_id === app.student_id);
+    const c = companies.find(co => co.company_id === app.company_id);
+    setRejectModal({
+      isOpen: true,
+      applicationId: app.application_id,
+      studentName: s?.full_name || app.student_name || 'Student',
+      companyName: c?.company_name || app.company_name || 'Company',
+      selectedReason: 'Incomplete or missing required documents',
+      customRemarks: ''
+    });
+  };
+
+  const handleConfirmReject = async () => {
+    const { applicationId, selectedReason, customRemarks } = rejectModal;
+    const finalRemarks = customRemarks.trim()
+      ? `${selectedReason}: ${customRemarks.trim()}`
+      : selectedReason;
+
+    try {
+      const res = await fetchWithAuth(`${API_BASE_URL}/staff/applications/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ application_id: applicationId, remarks: finalRemarks })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setApplications(applications.map(a =>
+          a.application_id === applicationId ? { ...a, status: 'rejected', remarks: finalRemarks } : a
+        ));
+        setRejectModal(prev => ({ ...prev, isOpen: false }));
+        toast.success('Application rejected with feedback.');
+      } else {
+        toast.error(data.message || 'Failed to reject application');
+      }
+    } catch (error) {
+      toast.error('Server error while rejecting application');
+    }
+  };
 
   const pendingSubmissions = submissions.filter(s => s.status === 'pending');
   const pendingApps = applications.filter(a => a.status === 'pending');
@@ -131,27 +195,6 @@ export default function StaffDashboard({ activePage, currentUser }) {
       }
     } catch (error) {
       toast.error('Server error while approving application');
-    }
-  };
-
-  const rejectApplication = async (application_id) => {
-    try {
-      const res = await fetchWithAuth(`${API_BASE_URL}/staff/applications/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ application_id })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setApplications(applications.map(a =>
-          a.application_id === application_id ? { ...a, status: 'rejected' } : a
-        ));
-        toast.success('Application rejected.');
-      } else {
-        toast.error(data.message || 'Failed to reject application');
-      }
-    } catch (error) {
-      toast.error('Server error while rejecting application');
     }
   };
 
@@ -218,7 +261,7 @@ export default function StaffDashboard({ activePage, currentUser }) {
     dashboard: <StaffOverview pendingSubmissions={pendingSubmissions} pendingApps={pendingApps} evaluations={evaluations} announcements={announcements} notifications={notifications} />,
     profiling: <StudentProfilingView />,
     requirements: <ReviewRequirementsView enrichedSubmissions={submissions} onReview={reviewRequirement} filter={reqFilter} setFilter={setReqFilter} />,
-    applications: <ApplicationsView enrichedApps={applications} companies={companies} onApprove={approveApplication} onReject={rejectApplication} />,
+    applications: <ApplicationsView enrichedApps={applications} companies={companies} onApprove={approveApplication} onReject={openRejectModal} />,
     attendance: <AttendanceMonitorView placements={placements} students={students} companies={companies} attendance={attendance} />,
     evaluations: <EvaluationsView evaluations={evaluations} placements={placements} students={students} onAddEval={() => setShowEvalModal(true)} />,
     profile: <StaffProfileView currentUser={currentUser} />
@@ -226,6 +269,92 @@ export default function StaffDashboard({ activePage, currentUser }) {
 
   return (
     <>
+      {rejectModal.isOpen && (
+        <div className="modal-overlay" onClick={() => setRejectModal(prev => ({ ...prev, isOpen: false }))} style={{ zIndex: 9999 }}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <div className="modal-header">
+              <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--status-rejected)' }}>
+                <XCircle size={20} /> Reject Company Application
+              </h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => setRejectModal(prev => ({ ...prev, isOpen: false }))}>✕</button>
+            </div>
+
+            <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '10px', background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)' }}>
+              <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Student: <span style={{ color: '#38bdf8' }}>{rejectModal.studentName}</span>
+              </div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                Applying to: <strong>{rejectModal.companyName}</strong>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 600, marginBottom: '8px' }}>Select Reason for Rejection *</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {[
+                  "Incomplete or missing required documents",
+                  "Candidate does not meet minimum company qualifications",
+                  "Company training slots are full / Closed",
+                  "Invalid or unverified student credentials",
+                  "Other (Specify in remarks below)"
+                ].map((reason, idx) => (
+                  <label key={idx} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    background: rejectModal.selectedReason === reason ? 'rgba(56,189,248,0.1)' : 'var(--color-bg-elevated)',
+                    border: `1px solid ${rejectModal.selectedReason === reason ? 'var(--color-cyan)' : 'var(--color-border)'}`,
+                    cursor: 'pointer',
+                    fontSize: '0.86rem',
+                    color: 'var(--text-primary)'
+                  }}>
+                    <input
+                      type="radio"
+                      name="rejectReason"
+                      checked={rejectModal.selectedReason === reason}
+                      onChange={() => setRejectModal(prev => ({ ...prev, selectedReason: reason }))}
+                    />
+                    <span>{reason}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '12px' }}>
+              <label className="form-label" style={{ fontWeight: 600 }}>Specific Feedback / Remarks (Optional)</label>
+              <textarea
+                className="form-textarea"
+                placeholder="e.g. Missing updated Resume and Barangay Clearance. Please complete requirements before re-applying."
+                value={rejectModal.customRemarks}
+                onChange={e => setRejectModal(prev => ({ ...prev, customRemarks: e.target.value }))}
+                style={{ minHeight: '80px' }}
+              />
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                This remark will be sent to the student and displayed on their application card.
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+              <button
+                className="btn btn-ghost"
+                onClick={() => setRejectModal(prev => ({ ...prev, isOpen: false }))}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-danger"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                onClick={handleConfirmReject}
+              >
+                <XCircle size={16} /> Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showEvalModal && (
         <div className="modal-overlay" onClick={() => setShowEvalModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
@@ -588,7 +717,7 @@ function ApplicationsView({ enrichedApps, companies, onApprove, onReject }) {
                       <button
                         className="btn btn-danger btn-sm"
                         style={{ flex: 1, justifyContent: 'center' }}
-                        onClick={() => onReject(a.application_id)}
+                        onClick={() => onReject(a)}
                       >
                         <XCircle size={14} /> Reject
                       </button>
@@ -600,8 +729,15 @@ function ApplicationsView({ enrichedApps, companies, onApprove, onReject }) {
                     </div>
                   )}
                   {a.status === 'rejected' && (
-                    <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(244,63,94,0.08)', fontSize: '0.78rem', color: 'var(--status-rejected)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <XCircle size={13} /> Application rejected
+                    <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(244,63,94,0.08)', fontSize: '0.78rem', color: 'var(--status-rejected)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                        <XCircle size={13} /> Application rejected
+                      </div>
+                      {a.remarks && (
+                        <div style={{ fontSize: '0.74rem', opacity: 0.9, lineHeight: 1.4 }}>
+                          <strong>Reason:</strong> {a.remarks}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
