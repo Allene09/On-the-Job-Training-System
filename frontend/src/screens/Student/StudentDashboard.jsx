@@ -15,12 +15,12 @@ function StatusBadge({ status }) {
   const map = {
     approved: 'badge-approved', accepted: 'badge-accepted', completed: 'badge-completed',
     pending: 'badge-pending', submitted: 'badge-submitted', ongoing: 'badge-ongoing',
-    rejected: 'badge-rejected', terminated: 'badge-terminated'
+    recommended: 'badge-recommended', rejected: 'badge-rejected', terminated: 'badge-terminated'
   };
   return (
     <span className={`badge ${map[status] || 'badge-pending'}`}>
       <span className="badge-dot" />
-      {status?.charAt(0).toUpperCase() + status?.slice(1)}
+      {status === 'recommended' ? 'Recommended' : status?.charAt(0).toUpperCase() + status?.slice(1)}
     </span>
   );
 }
@@ -678,10 +678,12 @@ function DashboardView({ student, placement, company, hoursRendered, notificatio
                 const statusColor =
                   app.status === 'approved' || app.status === 'accepted' ? 'var(--status-approved)' :
                   app.status === 'rejected' || app.status === 'terminated' ? 'var(--status-rejected)' :
+                  app.status === 'recommended' ? '#38bdf8' :
                   'var(--status-pending)';
                 const statusBg =
                   app.status === 'approved' || app.status === 'accepted' ? 'rgba(34,197,94,0.08)' :
                   app.status === 'rejected' || app.status === 'terminated' ? 'rgba(244,63,94,0.08)' :
+                  app.status === 'recommended' ? 'rgba(14,165,233,0.08)' :
                   'rgba(251,191,36,0.08)';
                 return (
                   <div key={app.application_id} style={{
@@ -727,6 +729,27 @@ function DashboardView({ student, placement, company, hoursRendered, notificatio
                         </div>
                       )}
                     </div>
+                    {app.status === 'recommended' && (
+                      <div style={{
+                        marginTop: '4px',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        background: 'rgba(14,165,233,0.08)',
+                        border: '1px solid rgba(14,165,233,0.25)',
+                        color: '#38bdf8',
+                        fontSize: '0.76rem'
+                      }}>
+                        <div style={{ fontWeight: 600 }}>⭐ Recommended by Coordinator</div>
+                        {app.recommendation_notes && (
+                          <div style={{ color: 'var(--text-secondary)', marginTop: '2px', fontSize: '0.73rem', fontStyle: 'italic' }}>
+                            "{app.recommendation_notes}"
+                          </div>
+                        )}
+                        <div style={{ color: 'var(--text-muted)', marginTop: '2px', fontSize: '0.7rem' }}>
+                          Awaiting final placement decision by Administrator.
+                        </div>
+                      </div>
+                    )}
                     {app.status === 'rejected' && (
                       <div style={{
                         marginTop: '4px',

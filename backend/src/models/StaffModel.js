@@ -39,10 +39,14 @@ class StaffModel {
 
   static async getAllApplications() {
     const query = `
-      SELECT a.*, s.full_name as student_name, s.student_number, s.course, c.company_name, c.industry, c.photo_url, c.address 
+      SELECT a.*, s.full_name as student_name, s.student_number, s.course, c.company_name, c.industry, c.photo_url, c.address,
+             COALESCE(st_rec.full_name, u_rec.email, 'Staff') as recommended_by_name,
+             u_rec.email as recommended_by_email
       FROM applications a 
       JOIN students s ON a.student_id = s.student_id 
       JOIN companies c ON a.company_id = c.company_id
+      LEFT JOIN users u_rec ON a.recommended_by = u_rec.user_id
+      LEFT JOIN staff st_rec ON u_rec.user_id = st_rec.user_id
       ORDER BY a.applied_at DESC
     `;
     const [rows] = await pool.query(query);
@@ -90,6 +94,10 @@ class StaffModel {
 
   static async reviewRequirement(submissionId, status, remarks, reviewedBy) {
     await pool.query('CALL sp_ReviewRequirement(?, ?, ?, ?)', [submissionId, status, remarks, reviewedBy]);
+  }
+
+  static async recommendApplication(applicationId, recommendedBy, recommendationNotes) {
+    await pool.query('CALL sp_RecommendApplication(?, ?, ?)', [applicationId, recommendedBy, recommendationNotes]);
   }
 
   static async approveApplication(applicationId, approvedBy, startDate, endDate, requiredHours) {

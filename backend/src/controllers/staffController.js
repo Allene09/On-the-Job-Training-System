@@ -97,6 +97,18 @@ exports.reviewRequirement = async (req, res) => {
   }
 };
 
+exports.recommendApplication = async (req, res) => {
+  try {
+    const { application_id, recommendation_notes } = req.body;
+    const staffId = req.user?.user_id || 2;
+    await StaffModel.recommendApplication(application_id, staffId, recommendation_notes || 'Recommended for Admin placement approval');
+    return res.json({ success: true, message: "Application recommended to Admin successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 exports.approveApplication = async (req, res) => {
   try {
     const { application_id, approved_by, start_date, end_date, required_hours } = req.body;

@@ -575,6 +575,13 @@ tbody tr:hover { background: rgba(255,255,255,0.025); }
 }
 .badge-pending .badge-dot, .badge-submitted .badge-dot { background: var(--status-pending); }
 
+.badge-recommended {
+  background: rgba(14, 165, 233, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(14, 165, 233, 0.35);
+}
+.badge-recommended .badge-dot { background: #38bdf8; }
+
 .badge-rejected, .badge-terminated, .badge-inactive {
   background: rgba(244,63,94,0.12);
   color: var(--status-rejected);

@@ -5,17 +5,22 @@ import API_BASE_URL, { fetchWithAuth } from '../../config/api';
 import {
   Users, Building2, FileText, BarChart3, Plus, Settings,
   TrendingUp, Clock, CheckCircle2, XCircle, Bell, Search, AlertCircle, Eye, EyeOff, X,
-  Copy, Check, Lock, Unlock, Shield, ShieldCheck, UserCheck, UserX, Calendar, RotateCw
+  Copy, Check, Lock, Unlock, Shield, ShieldCheck, UserCheck, UserX, Calendar, RotateCw,
+  ThumbsUp, Briefcase, MapPin, FileCheck
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Line } from 'recharts';
 
 function StatusBadge({ status }) {
-  const map = { active: 'badge-active', inactive: 'badge-rejected', pending: 'badge-pending', approved: 'badge-approved', student: 'badge-ongoing', staff: 'badge-submitted', admin: 'badge-approved' };
+  const map = {
+    active: 'badge-active', inactive: 'badge-rejected', pending: 'badge-pending',
+    approved: 'badge-approved', accepted: 'badge-accepted', recommended: 'badge-recommended',
+    student: 'badge-ongoing', staff: 'badge-submitted', admin: 'badge-approved', rejected: 'badge-rejected'
+  };
   return (
     <span className={`badge ${map[status] || 'badge-pending'}`}>
       <span className="badge-dot" />
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {status === 'recommended' ? 'Recommended' : status?.charAt(0).toUpperCase() + status?.slice(1)}
     </span>
   );
 }
@@ -27,6 +32,7 @@ export default function AdminDashboard({ activePage }) {
   const [users, setUsers] = useState([]);
   const [students, setStudents] = useState([]);
   const [staff, setStaff] = useState([]);
+  const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     total_users: 0, total_students: 0, total_companies: 0,
@@ -40,6 +46,8 @@ export default function AdminDashboard({ activePage }) {
   const [showReqModal, setShowReqModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showAddUserPassword, setShowAddUserPassword] = useState(false);
+  const [appRejectModal, setAppRejectModal] = useState({ isOpen: false, app: null, reason: 'Incomplete or missing required documents', customRemarks: '' });
+  const [appApproveModal, setAppApproveModal] = useState({ isOpen: false, app: null, startDate: new Date().toISOString().split('T')[0], endDate: '', requiredHours: 486 });
   const [companyForm, setCompanyForm] = useState({ company_name: '', industry: '', address: '', contact_person: '', contact_number: '', email: '', slots_available: 5, photo_url: '', requirements: '' });
   const [companyPhotoFile, setCompanyPhotoFile] = useState(null);
   const [editCompanyForm, setEditCompanyForm] = useState(null);
@@ -91,13 +99,14 @@ export default function AdminDashboard({ activePage }) {
     const fetchAdminData = async (silent = false) => {
       try {
         if (!silent) setLoading(true);
-        const [usersRes, compsRes, reqsRes, annRes, statsRes, placementsRes] = await Promise.all([
+        const [usersRes, compsRes, reqsRes, annRes, statsRes, placementsRes, appsRes] = await Promise.all([
           fetchWithAuth(`${API_BASE_URL}/admin/users`),
           fetchWithAuth(`${API_BASE_URL}/companies`),
           fetchWithAuth(`${API_BASE_URL}/requirements/types`),
           fetchWithAuth(`${API_BASE_URL}/admin/announcements`),
           fetchWithAuth(`${API_BASE_URL}/admin/stats`),
-          fetchWithAuth(`${API_BASE_URL}/admin/placements`)
+          fetchWithAuth(`${API_BASE_URL}/admin/placements`),
+          fetchWithAuth(`${API_BASE_URL}/admin/applications`)
         ]);
 
         if (!isMounted) return;
@@ -108,6 +117,7 @@ export default function AdminDashboard({ activePage }) {
         const annData = await annRes.json();
         const statsData = await statsRes.json();
         const placementsData = await placementsRes.json();
+        const appsData = appsRes.ok ? await appsRes.json() : { data: [] };
 
         const allUsers = usersData.data || [];
         setUsers(allUsers);
@@ -118,6 +128,7 @@ export default function AdminDashboard({ activePage }) {
         setReqTypes(reqsData.data || []);
         setAnnouncements(annData.data || []);
         setPlacements(placementsData.data || []);
+        setApplications(appsData.data || []);
         
         setStats({
           total_users: allUsers.length,
@@ -341,6 +352,93 @@ export default function AdminDashboard({ activePage }) {
     }
   };
 
+  const openApproveModal = (app) => {
+    const s = students.find(st => st.student_id === app.student_id);
+    const hrs = s?.required_hours || 486;
+    const now = new Date();
+    const startDate = now.toISOString().split('T')[0];
+    const end = new Date();
+    end.setMonth(end.getMonth() + 4);
+    const endDate = end.toISOString().split('T')[0];
+
+    setAppApproveModal({
+      isOpen: true,
+      app,
+      startDate,
+      endDate,
+      requiredHours: hrs
+    });
+  };
+
+  const confirmApproveApplication = async () => {
+    const { app, startDate, endDate, requiredHours } = appApproveModal;
+    if (!app) return;
+    try {
+      const res = await fetchWithAuth(`${API_BASE_URL}/admin/applications/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          application_id: app.application_id,
+          start_date: startDate,
+          end_date: endDate,
+          required_hours: requiredHours
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setApplications(applications.map(a =>
+          a.application_id === app.application_id ? { ...a, status: 'accepted' } : a
+        ));
+        setCompanies(companies.map(c =>
+          c.company_id === app.company_id ? { ...c, slots_available: Math.max(0, (c.slots_available || 1) - 1) } : c
+        ));
+        setAppApproveModal({ isOpen: false, app: null, startDate: '', endDate: '', requiredHours: 486 });
+        toast.success('Application accepted and student placed successfully!');
+      } else {
+        toast.error(data.message || 'Failed to approve application');
+      }
+    } catch (e) {
+      toast.error('Server error while approving application');
+    }
+  };
+
+  const openRejectModal = (app) => {
+    setAppRejectModal({
+      isOpen: true,
+      app,
+      reason: 'Incomplete or missing required documents',
+      customRemarks: ''
+    });
+  };
+
+  const confirmRejectApplication = async () => {
+    const { app, reason, customRemarks } = appRejectModal;
+    if (!app) return;
+    const finalRemarks = customRemarks.trim() ? `${reason}: ${customRemarks.trim()}` : reason;
+    try {
+      const res = await fetchWithAuth(`${API_BASE_URL}/admin/applications/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          application_id: app.application_id,
+          remarks: finalRemarks
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setApplications(applications.map(a =>
+          a.application_id === app.application_id ? { ...a, status: 'rejected', remarks: finalRemarks } : a
+        ));
+        setAppRejectModal({ isOpen: false, app: null, reason: '', customRemarks: '' });
+        toast.success('Application rejected.');
+      } else {
+        toast.error(data.message || 'Failed to reject application');
+      }
+    } catch (e) {
+      toast.error('Server error while rejecting application');
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
@@ -354,6 +452,7 @@ export default function AdminDashboard({ activePage }) {
 
   const pages = {
     dashboard: <AdminOverview stats={stats} announcements={announcements} />,
+    applications: <AdminApplicationsView applications={applications} companies={companies} onApprove={openApproveModal} onReject={openRejectModal} />,
     users: <ManageUsersView users={users} setUsers={setUsers} students={students} staff={staff} admins={admins} onAdd={() => setShowUserModal(true)} />,
     pending: <PendingAccountsView />,
     companies: <ManageCompaniesView companies={companies} onAdd={() => setShowCompanyModal(true)} setCompanies={setCompanies} onEdit={(c) => { setEditCompanyForm(c); setShowEditCompanyModal(true); }} />,
@@ -612,6 +711,160 @@ export default function AdminDashboard({ activePage }) {
             <button className="btn btn-primary w-full" onClick={() => setNewlyCreatedAccount(null)} style={{ justifyContent: 'center' }}>
               Done
             </button>
+          </div>
+        </div>
+      )}
+
+      {appApproveModal.isOpen && appApproveModal.app && (
+        <div className="modal-overlay" onClick={() => setAppApproveModal(prev => ({ ...prev, isOpen: false }))} style={{ zIndex: 9999 }}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <div className="modal-header">
+              <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--status-approved)' }}>
+                <CheckCircle2 size={20} /> Approve Application & Create Placement
+              </h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => setAppApproveModal(prev => ({ ...prev, isOpen: false }))}>✕</button>
+            </div>
+
+            <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '10px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' }}>
+              <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Student: <span style={{ color: 'var(--status-approved)' }}>{appApproveModal.app.student_name}</span>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                Course: {appApproveModal.app.course} · Student #{appApproveModal.app.student_number}
+              </div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', marginTop: '6px', fontWeight: 500 }}>
+                Target Company: {appApproveModal.app.company_name}
+              </div>
+              {appApproveModal.app.recommendation_notes && (
+                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: '0.78rem', color: '#38bdf8' }}>
+                  ⭐ <strong>Staff Recommendation:</strong> "{appApproveModal.app.recommendation_notes}"
+                </div>
+              )}
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">OJT Start Date</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={appApproveModal.startDate}
+                  onChange={e => setAppApproveModal(prev => ({ ...prev, startDate: e.target.value }))}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">OJT Target End Date</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={appApproveModal.endDate}
+                  onChange={e => setAppApproveModal(prev => ({ ...prev, endDate: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '10px' }}>
+              <label className="form-label">Required OJT Hours</label>
+              <input
+                type="number"
+                className="form-input"
+                min="1"
+                value={appApproveModal.requiredHours}
+                onChange={e => setAppApproveModal(prev => ({ ...prev, requiredHours: parseInt(e.target.value) || 486 }))}
+              />
+              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                Approving will automatically allocate 1 company slot and establish the student's active placement record.
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+              <button
+                className="btn btn-ghost"
+                onClick={() => setAppApproveModal(prev => ({ ...prev, isOpen: false }))}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-success"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                onClick={confirmApproveApplication}
+              >
+                <CheckCircle2 size={16} /> Confirm & Approve
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {appRejectModal.isOpen && appRejectModal.app && (
+        <div className="modal-overlay" onClick={() => setAppRejectModal(prev => ({ ...prev, isOpen: false }))} style={{ zIndex: 9999 }}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <div className="modal-header">
+              <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--status-rejected)' }}>
+                <XCircle size={20} /> Reject Company Application
+              </h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => setAppRejectModal(prev => ({ ...prev, isOpen: false }))}>✕</button>
+            </div>
+
+            <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '10px', background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)' }}>
+              <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Student: <span style={{ color: '#38bdf8' }}>{appRejectModal.app.student_name}</span>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                Company: <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{appRejectModal.app.company_name}</span>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 600 }}>Reason for Rejection</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+                {[
+                  'Incomplete or missing required documents',
+                  'Academic prerequisites not yet satisfied',
+                  'Company slots fully occupied',
+                  'Student requested application cancellation',
+                  'Other reason (specify below)'
+                ].map(r => (
+                  <label key={r} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.83rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="adminRejectionReason"
+                      value={r}
+                      checked={appRejectModal.reason === r}
+                      onChange={() => setAppRejectModal(prev => ({ ...prev, reason: r }))}
+                    />
+                    {r}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '12px' }}>
+              <label className="form-label" style={{ fontWeight: 600 }}>Specific Feedback / Remarks</label>
+              <textarea
+                className="form-textarea"
+                placeholder="Write specific feedback to guide the student..."
+                value={appRejectModal.customRemarks}
+                onChange={e => setAppRejectModal(prev => ({ ...prev, customRemarks: e.target.value }))}
+                style={{ width: '100%', minHeight: '80px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+              <button
+                className="btn btn-ghost"
+                onClick={() => setAppRejectModal(prev => ({ ...prev, isOpen: false }))}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-danger"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                onClick={confirmRejectApplication}
+              >
+                <XCircle size={16} /> Confirm Rejection
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1971,6 +2224,293 @@ function AdminProfileView({ currentUser }) {
           </form>
         </div>
       </div>
+    </>
+  );
+}
+
+function AdminApplicationsView({ applications, companies, onApprove, onReject }) {
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+
+  const counts = {
+    all: applications.length,
+    recommended: applications.filter(a => a.status === 'recommended').length,
+    pending: applications.filter(a => a.status === 'pending').length,
+    accepted: applications.filter(a => a.status === 'accepted').length,
+    rejected: applications.filter(a => a.status === 'rejected').length,
+  };
+
+  const visible = applications
+    .filter(a => filter === 'all' || a.status === filter)
+    .filter(a =>
+      !search ||
+      a.student_name?.toLowerCase().includes(search.toLowerCase()) ||
+      a.company_name?.toLowerCase().includes(search.toLowerCase()) ||
+      a.course?.toLowerCase().includes(search.toLowerCase()) ||
+      a.student_number?.toLowerCase().includes(search.toLowerCase())
+    );
+
+  const tabColors = {
+    recommended: '#38bdf8',
+    pending: 'var(--status-pending)',
+    accepted: 'var(--status-approved)',
+    rejected: 'var(--status-rejected)'
+  };
+
+  return (
+    <>
+      <div className="page-header">
+        <h1>Student Company Applications</h1>
+        <p>Review student applications and coordinator endorsements, and make final company placement decisions</p>
+      </div>
+
+      {/* Stats Bento Overview */}
+      <div className="bento-grid" style={{ marginBottom: '24px' }}>
+        <motion.div className="bento-card col-span-3 stat-card purple" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+          <div className="stat-icon purple"><Building2 size={24} /></div>
+          <div><div className="stat-value" style={{ fontSize: '2.3rem' }}>{counts.all}</div><div className="stat-label">Total Applications</div></div>
+        </motion.div>
+        <motion.div className="bento-card col-span-3 stat-card cyan" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <div className="stat-icon cyan"><ThumbsUp size={24} /></div>
+          <div><div className="stat-value" style={{ fontSize: '2.3rem' }}>{counts.recommended}</div><div className="stat-label">Recommended by Staff</div></div>
+        </motion.div>
+        <motion.div className="bento-card col-span-3 stat-card orange" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+          <div className="stat-icon orange"><Clock size={24} /></div>
+          <div><div className="stat-value" style={{ fontSize: '2.3rem' }}>{counts.pending}</div><div className="stat-label">Pending Staff Review</div></div>
+        </motion.div>
+        <motion.div className="bento-card col-span-3 stat-card green" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <div className="stat-icon green"><CheckCircle2 size={24} /></div>
+          <div><div className="stat-value" style={{ fontSize: '2.3rem' }}>{counts.accepted}</div><div className="stat-label">Placed Students</div></div>
+        </motion.div>
+      </div>
+
+      {/* Filter Tabs & Search */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {['all', 'recommended', 'pending', 'accepted', 'rejected'].map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              style={{
+                padding: '7px 16px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: 600,
+                border: `1.5px solid ${filter === f ? (tabColors[f] || 'var(--primary-color)') : 'var(--color-border)'}`,
+                background: filter === f ? `${tabColors[f] || 'var(--primary-color)'}18` : 'transparent',
+                color: filter === f ? (tabColors[f] || 'var(--primary-color)') : 'var(--text-muted)',
+                cursor: 'pointer', transition: 'all 0.18s', display: 'flex', alignItems: 'center', gap: '6px'
+              }}
+            >
+              {f === 'recommended' ? '⭐ Recommended' : f.charAt(0).toUpperCase() + f.slice(1)}
+              <span style={{
+                background: filter === f ? (tabColors[f] || 'var(--primary-color)') : 'var(--color-bg-elevated)',
+                color: filter === f ? '#fff' : 'var(--text-muted)',
+                borderRadius: '10px', padding: '1px 7px', fontSize: '0.72rem', fontWeight: 700
+              }}>{counts[f]}</span>
+            </button>
+          ))}
+        </div>
+
+        <div style={{ position: 'relative', minWidth: '260px' }}>
+          <Search size={14} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+          <input
+            type="text"
+            placeholder="Search student, ID, or company..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              width: '100%', padding: '8px 12px 8px 32px',
+              background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)',
+              borderRadius: '10px', color: 'var(--text-primary)', fontSize: '0.83rem', outline: 'none'
+            }}
+          />
+          {search && (
+            <button onClick={() => setSearch('')} style={{ position: 'absolute', right: '9px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.85rem' }}>✕</button>
+          )}
+        </div>
+      </div>
+
+      {/* Grid of Applications */}
+      {visible.length === 0 ? (
+        <div className="card empty-state"><p>No applications match the selected criteria.</p></div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '16px' }}>
+          {visible.map(a => {
+            const comp = companies?.find(c => c.company_id === a.company_id);
+            const logoUrl = comp?.photo_url ? API_BASE_URL.replace('/api', '') + comp.photo_url : null;
+            const statusColor =
+              a.status === 'accepted' ? 'var(--status-approved)' :
+              a.status === 'rejected' ? 'var(--status-rejected)' :
+              a.status === 'recommended' ? '#38bdf8' :
+              'var(--status-pending)';
+            const statusBg =
+              a.status === 'accepted' ? 'rgba(34,197,94,0.06)' :
+              a.status === 'rejected' ? 'rgba(244,63,94,0.06)' :
+              a.status === 'recommended' ? 'rgba(14,165,233,0.06)' :
+              'rgba(251,191,36,0.06)';
+
+            return (
+              <motion.div
+                key={a.application_id}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                  background: 'var(--color-bg-surface)',
+                  border: `1px solid ${statusColor}40`,
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  transition: 'transform 0.15s, box-shadow 0.15s'
+                }}
+                whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(0,0,0,0.18)' }}
+              >
+                {/* Header banner */}
+                <div style={{ position: 'relative', height: '80px', background: statusBg, borderBottom: `1px solid ${statusColor}22` }}>
+                  {logoUrl ? (
+                    <img src={logoUrl} alt={a.company_name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.25 }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, var(--color-bg-elevated), var(--color-bg-surface))' }} />
+                  )}
+
+                  <div style={{
+                    position: 'absolute', bottom: '-22px', left: '20px',
+                    width: '48px', height: '48px', borderRadius: '12px',
+                    border: '2.5px solid var(--color-bg-surface)',
+                    background: logoUrl ? `url(${logoUrl}) center/cover no-repeat` : 'var(--color-bg-elevated)',
+                    backgroundColor: 'var(--color-bg-elevated)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                    overflow: 'hidden'
+                  }}>
+                    {!logoUrl && <Building2 size={22} color="var(--text-muted)" />}
+                  </div>
+
+                  <div style={{ position: 'absolute', top: '10px', right: '12px' }}>
+                    <StatusBadge status={a.status} />
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div style={{ padding: '30px 18px 18px 18px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', lineHeight: 1.2 }}>{a.company_name}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                      <Briefcase size={11} /><span>{a.industry}</span>
+                      {comp?.address && <><span>·</span><MapPin size={11} /><span>{comp.address}</span></>}
+                      {comp?.slots_available !== undefined && (
+                        <><span>·</span><span style={{ color: comp.slots_available > 0 ? 'var(--status-approved)' : 'var(--status-rejected)' }}>{comp.slots_available} slots left</span></>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Staff Recommendation Callout if present */}
+                  {a.status === 'recommended' && (
+                    <div style={{ padding: '10px 12px', borderRadius: '10px', background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.3)', color: '#38bdf8' }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <ThumbsUp size={13} /> Recommended by {a.recommended_by_name || 'Coordinator'}
+                      </div>
+                      {a.recommendation_notes && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px', fontStyle: 'italic' }}>
+                          "{a.recommendation_notes}"
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Student Info */}
+                  <div style={{ padding: '10px 12px', background: 'var(--color-bg-elevated)', borderRadius: '10px', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '38px', height: '38px', borderRadius: '50%', flexShrink: 0,
+                      background: 'linear-gradient(135deg, var(--primary-color), #0ea5e9)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 700, fontSize: '0.95rem', color: '#fff'
+                    }}>
+                      {a.student_name?.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.student_name}</div>
+                      <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{a.course} · #{a.student_number}</div>
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'right' }}>
+                      <Clock size={11} style={{ display: 'inline', marginRight: 3 }} />
+                      {new Date(a.applied_at).toLocaleDateString()}
+                    </div>
+                  </div>
+
+                  {/* Attached Documents */}
+                  <div style={{ padding: '8px 10px', background: 'var(--color-bg-elevated)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: a.documents?.length ? '6px' : 0 }}>
+                      <FileText size={11} />
+                      {a.documents?.length
+                        ? `${a.documents.length} document${a.documents.length !== 1 ? 's' : ''} submitted`
+                        : 'No documents attached'}
+                    </div>
+                    {a.documents?.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {a.documents.map((doc, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem' }}>
+                            <FileCheck size={11} color="var(--text-accent)" />
+                            {doc.file_path ? (
+                              <a
+                                href={API_BASE_URL.replace('/api', '') + doc.file_path}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: 'var(--text-accent)', textDecoration: 'none' }}
+                              >
+                                {doc.name || doc.original_name || doc.file_path.split('/').pop()}
+                              </a>
+                            ) : (
+                              <span style={{ color: 'var(--text-secondary)' }}>{doc.name}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  {(a.status === 'pending' || a.status === 'recommended') && (
+                    <div style={{ display: 'flex', gap: '8px', marginTop: 'auto', paddingTop: '4px' }}>
+                      <button
+                        className="btn btn-success btn-sm"
+                        style={{ flex: 1, justifyContent: 'center' }}
+                        onClick={() => onApprove(a)}
+                      >
+                        <CheckCircle2 size={14} /> Accept & Place
+                      </button>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        style={{ flex: 1, justifyContent: 'center' }}
+                        onClick={() => onReject(a)}
+                      >
+                        <XCircle size={14} /> Reject
+                      </button>
+                    </div>
+                  )}
+
+                  {a.status === 'accepted' && (
+                    <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', fontSize: '0.78rem', color: 'var(--status-approved)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: 'auto' }}>
+                      <CheckCircle2 size={13} /> Application Accepted & Placement Created
+                    </div>
+                  )}
+
+                  {a.status === 'rejected' && (
+                    <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)', fontSize: '0.78rem', color: 'var(--status-rejected)', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: 'auto' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                        <XCircle size={13} /> Application Rejected
+                      </div>
+                      {a.remarks && (
+                        <div style={{ fontSize: '0.74rem', opacity: 0.9, lineHeight: 1.4 }}>
+                          <strong>Reason:</strong> {a.remarks}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 }

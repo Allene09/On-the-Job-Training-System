@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import {
   LayoutDashboard, Users, FileCheck, Briefcase, ClipboardList,
   Star, CheckCircle2, XCircle, AlertCircle, Bell, Clock, TrendingUp, Building2, Eye, EyeOff,
-  Lock, Shield, Copy, Check, MapPin, Search, FileText
+  Lock, Shield, Copy, Check, MapPin, Search, FileText, ThumbsUp
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -13,12 +13,12 @@ function StatusBadge({ status }) {
   const map = {
     approved: 'badge-approved', accepted: 'badge-accepted', completed: 'badge-completed',
     active: 'badge-active', pending: 'badge-pending', submitted: 'badge-submitted',
-    ongoing: 'badge-ongoing', rejected: 'badge-rejected', reviewed: 'badge-approved'
+    recommended: 'badge-recommended', ongoing: 'badge-ongoing', rejected: 'badge-rejected', reviewed: 'badge-approved'
   };
   return (
     <span className={`badge ${map[status] || 'badge-pending'}`}>
       <span className="badge-dot" />
-      {status?.charAt(0).toUpperCase() + status?.slice(1)}
+      {status === 'recommended' ? 'Recommended' : status?.charAt(0).toUpperCase() + status?.slice(1)}
     </span>
   );
 }
@@ -138,6 +138,61 @@ export default function StaffDashboard({ activePage, currentUser }) {
       }
     } catch (error) {
       toast.error('Server error while rejecting application');
+    }
+  };
+
+  const [recommendModal, setRecommendModal] = useState({
+    isOpen: false,
+    applicationId: null,
+    studentName: '',
+    companyName: '',
+    notes: 'Completed all prerequisite requirements. Highly recommended for company placement.'
+  });
+
+  const openRecommendModal = (app) => {
+    const s = students.find(st => st.student_id === app.student_id);
+    const c = companies.find(co => co.company_id === app.company_id);
+    setRecommendModal({
+      isOpen: true,
+      applicationId: app.application_id,
+      studentName: s?.full_name || app.student_name || 'Student',
+      companyName: c?.company_name || app.company_name || 'Company',
+      notes: 'Completed all prerequisite requirements. Highly recommended for company placement.'
+    });
+  };
+
+  const handleConfirmRecommend = async () => {
+    const { applicationId, notes } = recommendModal;
+    try {
+      const res = await fetchWithAuth(`${API_BASE_URL}/staff/applications/recommend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          application_id: applicationId,
+          recommendation_notes: notes.trim()
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setApplications(applications.map(a =>
+          a.application_id === applicationId
+            ? {
+                ...a,
+                status: 'recommended',
+                recommended_by: currentUser?.user_id || 2,
+                recommended_by_name: currentUser?.profile?.full_name || 'Coordinator',
+                recommended_at: new Date().toISOString(),
+                recommendation_notes: notes.trim()
+              }
+            : a
+        ));
+        setRecommendModal(prev => ({ ...prev, isOpen: false }));
+        toast.success('Student application recommended to Admin successfully!');
+      } else {
+        toast.error(data.message || 'Failed to submit recommendation');
+      }
+    } catch (error) {
+      toast.error('Server error while submitting recommendation');
     }
   };
 
@@ -261,7 +316,7 @@ export default function StaffDashboard({ activePage, currentUser }) {
     dashboard: <StaffOverview pendingSubmissions={pendingSubmissions} pendingApps={pendingApps} evaluations={evaluations} announcements={announcements} notifications={notifications} />,
     profiling: <StudentProfilingView />,
     requirements: <ReviewRequirementsView enrichedSubmissions={submissions} onReview={reviewRequirement} filter={reqFilter} setFilter={setReqFilter} />,
-    applications: <ApplicationsView enrichedApps={applications} companies={companies} onApprove={approveApplication} onReject={openRejectModal} />,
+    applications: <ApplicationsView enrichedApps={applications} companies={companies} onRecommend={openRecommendModal} />,
     attendance: <AttendanceMonitorView placements={placements} students={students} companies={companies} attendance={attendance} />,
     evaluations: <EvaluationsView evaluations={evaluations} placements={placements} students={students} onAddEval={() => setShowEvalModal(true)} />,
     profile: <StaffProfileView currentUser={currentUser} />
@@ -269,6 +324,59 @@ export default function StaffDashboard({ activePage, currentUser }) {
 
   return (
     <>
+      {recommendModal.isOpen && (
+        <div className="modal-overlay" onClick={() => setRecommendModal(prev => ({ ...prev, isOpen: false }))} style={{ zIndex: 9999 }}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <div className="modal-header">
+              <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#38bdf8' }}>
+                <ThumbsUp size={20} /> Recommend Student to Admin
+              </h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => setRecommendModal(prev => ({ ...prev, isOpen: false }))}>✕</button>
+            </div>
+
+            <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '10px', background: 'rgba(14,165,233,0.08)', border: '1px solid rgba(14,165,233,0.2)' }}>
+              <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Student: <span style={{ color: '#38bdf8' }}>{recommendModal.studentName}</span>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                Company: <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{recommendModal.companyName}</span>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '16px' }}>
+              <label className="form-label" style={{ fontWeight: 600 }}>Recommendation Endorsement Note</label>
+              <textarea
+                className="form-textarea"
+                rows={3}
+                placeholder="Enter reasons for endorsement (e.g., student passed preliminary screening and prerequisites)..."
+                value={recommendModal.notes}
+                onChange={e => setRecommendModal(prev => ({ ...prev, notes: e.target.value }))}
+                style={{ width: '100%', minHeight: '80px' }}
+              />
+              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                This recommendation note will be forwarded directly to the Administrator for final placement decision.
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
+              <button
+                className="btn btn-ghost"
+                onClick={() => setRecommendModal(prev => ({ ...prev, isOpen: false }))}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#0284c7', borderColor: '#0284c7' }}
+                onClick={handleConfirmRecommend}
+              >
+                <ThumbsUp size={16} /> Confirm Recommendation
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {rejectModal.isOpen && (
         <div className="modal-overlay" onClick={() => setRejectModal(prev => ({ ...prev, isOpen: false }))} style={{ zIndex: 9999 }}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
@@ -507,13 +615,14 @@ function ReviewRequirementsView({ enrichedSubmissions, onReview, filter, setFilt
   );
 }
 
-function ApplicationsView({ enrichedApps, companies, onApprove, onReject }) {
+function ApplicationsView({ enrichedApps, companies, onRecommend }) {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
 
   const counts = {
     all: enrichedApps.length,
     pending: enrichedApps.filter(a => a.status === 'pending').length,
+    recommended: enrichedApps.filter(a => a.status === 'recommended').length,
     accepted: enrichedApps.filter(a => a.status === 'accepted').length,
     rejected: enrichedApps.filter(a => a.status === 'rejected').length,
   };
@@ -527,19 +636,24 @@ function ApplicationsView({ enrichedApps, companies, onApprove, onReject }) {
       a.course?.toLowerCase().includes(search.toLowerCase())
     );
 
-  const tabColors = { pending: 'var(--status-pending)', accepted: 'var(--status-approved)', rejected: 'var(--status-rejected)' };
+  const tabColors = {
+    pending: 'var(--status-pending)',
+    recommended: '#38bdf8',
+    accepted: 'var(--status-approved)',
+    rejected: 'var(--status-rejected)'
+  };
 
   return (
     <>
       <div className="page-header">
-        <h1>Company Applications</h1>
-        <p>Review and approve student company placement applications</p>
+        <h1>Student Company Applications</h1>
+        <p>Review student applications and recommend qualified students to Admin for final company placement</p>
       </div>
 
       {/* Filter Tabs */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {['all', 'pending', 'accepted', 'rejected'].map(f => (
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {['all', 'pending', 'recommended', 'accepted', 'rejected'].map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -551,7 +665,7 @@ function ApplicationsView({ enrichedApps, companies, onApprove, onReject }) {
                 cursor: 'pointer', transition: 'all 0.18s', display: 'flex', alignItems: 'center', gap: '6px'
               }}
             >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
+              {f === 'recommended' ? 'Recommended' : f.charAt(0).toUpperCase() + f.slice(1)}
               <span style={{
                 background: filter === f ? (tabColors[f] || 'var(--primary-color)') : 'var(--color-bg-elevated)',
                 color: filter === f ? '#fff' : 'var(--text-muted)',
@@ -592,10 +706,12 @@ function ApplicationsView({ enrichedApps, companies, onApprove, onReject }) {
             const statusColor =
               a.status === 'accepted' ? 'var(--status-approved)' :
               a.status === 'rejected' ? 'var(--status-rejected)' :
+              a.status === 'recommended' ? '#38bdf8' :
               'var(--status-pending)';
             const statusBg =
               a.status === 'accepted' ? 'rgba(34,197,94,0.06)' :
               a.status === 'rejected' ? 'rgba(244,63,94,0.06)' :
+              a.status === 'recommended' ? 'rgba(14,165,233,0.06)' :
               'rgba(251,191,36,0.06)';
 
             return (
@@ -704,34 +820,45 @@ function ApplicationsView({ enrichedApps, companies, onApprove, onReject }) {
                     </div>
                   </div>
 
-                  {/* Actions */}
+                  {/* Actions & Status details */}
                   {a.status === 'pending' && (
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                    <div style={{ marginTop: '4px' }}>
                       <button
-                        className="btn btn-success btn-sm"
-                        style={{ flex: 1, justifyContent: 'center' }}
-                        onClick={() => onApprove(a.application_id)}
+                        className="btn btn-primary btn-sm"
+                        style={{ width: '100%', justifyContent: 'center', background: '#0284c7', borderColor: '#0284c7', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        onClick={() => onRecommend(a)}
                       >
-                        <CheckCircle2 size={14} /> Accept
-                      </button>
-                      <button
-                        className="btn btn-danger btn-sm"
-                        style={{ flex: 1, justifyContent: 'center' }}
-                        onClick={() => onReject(a)}
-                      >
-                        <XCircle size={14} /> Reject
+                        <ThumbsUp size={14} /> Recommend to Admin
                       </button>
                     </div>
                   )}
+
+                  {a.status === 'recommended' && (
+                    <div style={{ padding: '9px 12px', borderRadius: '8px', background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.25)', fontSize: '0.78rem', color: '#38bdf8' }}>
+                      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <ThumbsUp size={13} /> Recommended to Admin
+                      </div>
+                      {a.recommendation_notes && (
+                        <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', marginTop: '4px', fontStyle: 'italic' }}>
+                          "{a.recommendation_notes}"
+                        </div>
+                      )}
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                        Awaiting final decision from Administrator.
+                      </div>
+                    </div>
+                  )}
+
                   {a.status === 'accepted' && (
-                    <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(34,197,94,0.08)', fontSize: '0.78rem', color: 'var(--status-approved)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <CheckCircle2 size={13} /> Application accepted
+                    <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', fontSize: '0.78rem', color: 'var(--status-approved)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <CheckCircle2 size={13} /> Accepted & Placed by Admin
                     </div>
                   )}
+
                   {a.status === 'rejected' && (
-                    <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(244,63,94,0.08)', fontSize: '0.78rem', color: 'var(--status-rejected)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)', fontSize: '0.78rem', color: 'var(--status-rejected)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                        <XCircle size={13} /> Application rejected
+                        <XCircle size={13} /> Application Rejected
                       </div>
                       {a.remarks && (
                         <div style={{ fontSize: '0.74rem', opacity: 0.9, lineHeight: 1.4 }}>

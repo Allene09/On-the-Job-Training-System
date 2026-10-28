@@ -42,6 +42,7 @@ const NAV_CONFIG = {
     {
       group: 'System', items: [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'applications', label: 'Applications', icon: Building2 },
         { id: 'users', label: 'Manage Users', icon: Users },
         { id: 'companies', label: 'Partner Companies', icon: Building2 },
         { id: 'pending', label: 'Pending Accounts', icon: Database },
@@ -144,10 +145,17 @@ function Sidebar({ navItems, activePage, setActivePage, currentUser, onLogout, o
 
 function AppShell() {
   const { currentUser, logout } = useAuth();
-  const [activePage, setActivePage] = useState('dashboard');
+  const [activePage, setActivePage] = useState(() => {
+    return localStorage.getItem('ojtrack_active_page') || 'dashboard';
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [unreadNotifs, setUnreadNotifs] = useState([]);
+
+  const handlePageChange = (newPage) => {
+    setActivePage(newPage);
+    localStorage.setItem('ojtrack_active_page', newPage);
+  };
 
   useEffect(() => {
     if (!currentUser) return;
@@ -173,6 +181,8 @@ function AppShell() {
   }
 
   const navItems = NAV_CONFIG[currentUser.role] || [];
+  const validPages = navItems.flatMap(g => g.items.map(i => i.id)).concat(['profile']);
+  const currentActivePage = validPages.includes(activePage) ? activePage : 'dashboard';
 
   const DashboardComponent = {
     student: StudentDashboard,
@@ -184,8 +194,8 @@ function AppShell() {
     <div className="app-container">
       <Sidebar
         navItems={navItems}
-        activePage={activePage}
-        setActivePage={setActivePage}
+        activePage={currentActivePage}
+        setActivePage={handlePageChange}
         currentUser={currentUser}
         onLogout={logout}
         open={sidebarOpen}
@@ -204,7 +214,7 @@ function AppShell() {
             >
               {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
-            <span className="topbar-title">{PAGE_TITLES[activePage] || 'Dashboard'}</span>
+            <span className="topbar-title">{PAGE_TITLES[currentActivePage] || 'Dashboard'}</span>
           </div>
 
           <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -218,7 +228,7 @@ function AppShell() {
             >
               <RotateCw size={17} />
             </button>
-            <button className="notif-btn" title="Notifications" onClick={() => setActivePage('dashboard')}>
+            <button className="notif-btn" title="Notifications" onClick={() => handlePageChange('dashboard')}>
               <Bell size={18} />
               {unreadNotifs.length > 0 && <span className="notif-badge" />}
             </button>
@@ -229,7 +239,7 @@ function AppShell() {
         <div style={{ height: '100%', position: 'relative' }}>
           <AnimatePresence mode="wait">
             <motion.div
-              key={activePage}
+              key={currentActivePage}
               initial={{ opacity: 0, y: 10, filter: 'blur(5px)' }}
               animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
               exit={{ opacity: 0, y: -10, filter: 'blur(5px)' }}
@@ -237,7 +247,7 @@ function AppShell() {
               style={{ height: '100%' }}
             >
               {DashboardComponent && (
-                <DashboardComponent activePage={activePage} setActivePage={setActivePage} currentUser={currentUser} />
+                <DashboardComponent activePage={currentActivePage} setActivePage={handlePageChange} currentUser={currentUser} />
               )}
             </motion.div>
           </AnimatePresence>

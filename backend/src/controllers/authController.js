@@ -266,3 +266,38 @@ exports.updateProfile = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+exports.getMe = async (req, res) => {
+  try {
+    const userId = req.user?.user_id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const user = await AuthModel.getUserById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (user.status !== 'active') {
+      return res.status(403).json({ success: false, message: "Account is not active" });
+    }
+
+    const profile = await AuthModel.getUserDetails(user.user_id);
+
+    return res.json({
+      success: true,
+      user: {
+        user_id: user.user_id,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        requires_password_change: user.requires_password_change === 1,
+        profile
+      }
+    });
+  } catch (error) {
+    console.error('getMe error:', error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};

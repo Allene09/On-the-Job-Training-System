@@ -9,6 +9,7 @@ router.get('/full-data', staffController.getFullData);
 router.get('/students', staffController.getStudentProfiles);
 router.get('/requirements/pending', staffController.getPendingRequirements);
 router.post('/requirements/review', staffController.reviewRequirement);
+router.post('/applications/recommend', staffController.recommendApplication);
 router.post('/applications/approve', staffController.approveApplication);
 router.post('/applications/reject', staffController.rejectApplication);
 router.post('/evaluation/submit', staffController.submitEvaluation);

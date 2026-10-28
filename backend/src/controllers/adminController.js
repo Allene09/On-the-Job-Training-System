@@ -261,3 +261,43 @@ exports.getPlacements = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+exports.getApplications = async (req, res) => {
+  try {
+    const ApplicationModel = require('../models/ApplicationModel');
+    const apps = await ApplicationModel.getAll();
+    return res.json({ success: true, data: apps });
+  } catch (error) {
+    console.error('getApplications error:', error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.approveApplication = async (req, res) => {
+  try {
+    const StaffModel = require('../models/StaffModel');
+    const { application_id, start_date, end_date, required_hours } = req.body;
+    const adminId = req.user?.user_id || 1;
+    const sd = start_date || new Date().toISOString().split('T')[0];
+    const ed = end_date || '2026-11-30';
+    const hrs = required_hours || 486;
+
+    await StaffModel.approveApplication(application_id, adminId, sd, ed, hrs);
+    return res.json({ success: true, message: "Application accepted and placement created successfully" });
+  } catch (error) {
+    console.error('admin approveApplication error:', error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.rejectApplication = async (req, res) => {
+  try {
+    const StaffModel = require('../models/StaffModel');
+    const { application_id, remarks } = req.body;
+    await StaffModel.rejectApplication(application_id, remarks || 'Application rejected by Administrator');
+    return res.json({ success: true, message: "Application rejected successfully" });
+  } catch (error) {
+    console.error('admin rejectApplication error:', error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
