@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import API_BASE_URL from './config/api';
+import API_BASE_URL, { getAuthToken } from './config/api';
 import LandingScreen from './screens/LandingScreen';
 import LoginScreen from './screens/LoginScreen';
 import StudentDashboard from './screens/Student/StudentDashboard';
@@ -146,7 +146,7 @@ function Sidebar({ navItems, activePage, setActivePage, currentUser, onLogout, o
 function AppShell() {
   const { currentUser, logout } = useAuth();
   const [activePage, setActivePage] = useState(() => {
-    return localStorage.getItem('ojtrack_active_page') || 'dashboard';
+    return sessionStorage.getItem('ojtrack_active_page') || localStorage.getItem('ojtrack_active_page') || 'dashboard';
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -154,6 +154,7 @@ function AppShell() {
 
   const handlePageChange = (newPage) => {
     setActivePage(newPage);
+    sessionStorage.setItem('ojtrack_active_page', newPage);
     localStorage.setItem('ojtrack_active_page', newPage);
   };
 
@@ -162,7 +163,7 @@ function AppShell() {
     const fetchNotifs = async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/admin/notifications?user_id=${currentUser.user_id}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: { 'Authorization': `Bearer ${getAuthToken()}` }
         });
         const data = await res.json();
         if (data.success) {

@@ -1,14 +1,17 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import API_BASE_URL, { warmupBackend } from '../config/api';
+import API_BASE_URL, { warmupBackend, getAuthToken } from '../config/api';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(() => {
     try {
-      const token = localStorage.getItem('token');
-      const savedUser = localStorage.getItem('ojtrack_user');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      const savedUser = sessionStorage.getItem('ojtrack_user') || localStorage.getItem('ojtrack_user');
       if (token && savedUser) {
+        // Pin this tab's session in sessionStorage so other tabs logging into different roles don't overwrite it
+        sessionStorage.setItem('token', token);
+        sessionStorage.setItem('ojtrack_user', savedUser);
         return JSON.parse(savedUser);
       }
     } catch (e) {
@@ -21,7 +24,7 @@ export const AuthProvider = ({ children }) => {
     // Warmup backend silently on initial load
     warmupBackend();
 
-    const token = localStorage.getItem('token');
+    const token = getAuthToken();
     if (!token) return;
 
     // Verify and refresh session from server
@@ -32,7 +35,11 @@ export const AuthProvider = ({ children }) => {
       .then(data => {
         if (data.success && data.user) {
           setCurrentUser(data.user);
-          localStorage.setItem('ojtrack_user', JSON.stringify(data.user));
+          const serialized = JSON.stringify(data.user);
+          sessionStorage.setItem('ojtrack_user', serialized);
+          if (localStorage.getItem('token') === token) {
+            localStorage.setItem('ojtrack_user', serialized);
+          }
         } else if (data.status === 401 || data.status === 403 || !data.success) {
           // Token expired or invalid
           logout();
@@ -74,8 +81,11 @@ export const AuthProvider = ({ children }) => {
         if (data.user.requires_password_change) {
           return { success: true, requires_password_change: true, user_id: data.user.user_id };
         }
+        const serializedUser = JSON.stringify(data.user);
+        sessionStorage.setItem('token', data.token);
+        sessionStorage.setItem('ojtrack_user', serializedUser);
         localStorage.setItem('token', data.token);
-        localStorage.setItem('ojtrack_user', JSON.stringify(data.user));
+        localStorage.setItem('ojtrack_user', serializedUser);
         setCurrentUser(data.user);
         return { success: true };
       }
@@ -88,18 +98,28 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('ojtrack_user');
-    localStorage.removeItem('ojtrack_active_page');
+    const tabToken = sessionStorage.getItem('token');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('ojtrack_user');
+    sessionStorage.removeItem('ojtrack_active_page');
+    if (!tabToken || localStorage.getItem('token') === tabToken) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('ojtrack_user');
+      localStorage.removeItem('ojtrack_active_page');
+    }
     setCurrentUser(null);
   };
   
   const updateCurrentUser = (user) => {
     setCurrentUser(user);
     if (user) {
-      localStorage.setItem('ojtrack_user', JSON.stringify(user));
+      const serialized = JSON.stringify(user);
+      sessionStorage.setItem('ojtrack_user', serialized);
+      if (localStorage.getItem('token') === sessionStorage.getItem('token')) {
+        localStorage.setItem('ojtrack_user', serialized);
+      }
     } else {
-      localStorage.removeItem('ojtrack_user');
+      sessionStorage.removeItem('ojtrack_user');
     }
   };
 
